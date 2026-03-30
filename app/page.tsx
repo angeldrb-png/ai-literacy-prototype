@@ -873,7 +873,7 @@ function getLocalizedWorldMeta(locale: Locale) {
 
 function buildCreativeReplyLocalized(
   locale: Locale,
-  recipient: string,
+  recipient: W3Recipient,
   prompt: string,
   sourceText: string,
   turn: number
@@ -1329,9 +1329,11 @@ const currentAvailableWorld = useMemo(() => {
   }
 
   function submitCreativePrompt() {
+    if (!w3Recipient) return;
     const finalPrompt = w3Prompt.trim() || "请帮我把这张卡片改得更清楚一点。";
     const turn = w3Chat.filter((m) => m.role === "ai").length + 1;
-    const aiText = buildCreativeReplyLocalized(locale, 
+    const aiText = buildCreativeReplyLocalized(
+      locale,
       w3Recipient,
       `${finalPrompt} ${w3PromptTags.join(" ")}`,
       w3Draft,
