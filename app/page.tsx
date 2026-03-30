@@ -713,14 +713,14 @@ const infoTaskDrafts = {
 type ClaimStatus = "keep" | "check" | "remove";
 
 // World 3 data
-const recipients = [
+const recipients: Array<{ id: W3Recipient; emoji: string; title: string; note: string }> = [
   { id: "junior", emoji: "🌱", title: "刚升上中学的学弟妹", note: "想让他安心一点" },
   { id: "stress", emoji: "🌙", title: "最近压力很大的同学", note: "想让他感觉被理解" },
   { id: "new", emoji: "🎈", title: "新加入学校的同学", note: "想让他不那么紧张" },
   { id: "elder", emoji: "☀️", title: "社区长者", note: "想让他感到被关心" },
 ];
 
-const draftSamples: Record<string, string> = {
+const draftSamples: Record<W3Recipient, string> = {
   junior:
     "我刚上中学的时候，也很怕自己跟不上，连午饭时间都不知道该跟谁坐。后来我发现，只要先找到一两个愿意一起聊天、一起做功课的人，心里就会安稳很多。你不用一下子什么都做得很好，慢慢来就可以。",
   stress:
@@ -739,7 +739,7 @@ const promptTags = [
   "不要太正式",
 ];
 
-function buildCreativeReply(recipient: string, prompt: string, sourceText: string, turn: number) {
+function buildCreativeReply(recipient: W3Recipient | "", prompt: string, sourceText: string, turn: number) {
   const openers: Record<string, string> = {
     junior: "刚上中学的时候，紧张真的很正常。",
     stress: "如果你最近真的很累，也可以先让自己停一下。",
