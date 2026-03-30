@@ -37,6 +37,8 @@ import {
 type Screen = "home" | "w1" | "w2" | "w3" | "w4" | "w5";
 type WorldId = "w1" | "w2" | "w3" | "w4" | "w5";
 type ChatMessage = { role: "user" | "ai"; text: string };
+type W3Recipient = "junior" | "stress" | "new" | "elder";
+
 
 type Locale = "zh-Hans" | "zh-Hant" | "en";
 
@@ -962,7 +964,7 @@ export default function Page() {
 
   // World 3
   const [w3Step, setW3Step] = useState(0);
-  const [w3Recipient, setW3Recipient] = useState("");
+  const [w3Recipient, setW3Recipient] = useState<W3Recipient | "">("");
   const [w3Draft, setW3Draft] = useState("");
   const [w3Prompt, setW3Prompt] = useState("");
   const [w3PromptTags, setW3PromptTags] = useState<string[]>([]);
@@ -1053,7 +1055,7 @@ export default function Page() {
     },
   }) as const, [locale]);
 
-  const recipientOptions = useMemo(() => (locale === "en" ? [
+  const recipientOptions = useMemo<Array<{ id: W3Recipient; emoji: string; title: string; note: string }>>(() => (locale === "en" ? [
     { id: "junior", emoji: "🌱", title: "A younger student who just started secondary school", note: "Help them feel more at ease" },
     { id: "stress", emoji: "🌙", title: "A classmate under a lot of pressure lately", note: "Help them feel understood" },
     { id: "new", emoji: "🎈", title: "A new student who just joined the school", note: "Help them feel less nervous" },
@@ -1065,7 +1067,7 @@ export default function Page() {
     { id: "elder", emoji: "☀️", title: "社區長者", note: "想讓他感到被關心" },
   ] : recipients), [locale]);
 
-  const draftSamplesData = useMemo(() => (locale === "en" ? {
+  const draftSamplesData = useMemo<Record<W3Recipient, string>>(() => (locale === "en" ? {
     junior: "When I first started secondary school, I was worried that I would not fit in. Even lunchtime felt awkward because I did not know who to sit with. Later I realised that finding one or two people to talk to and study with made things feel much easier. You do not need to do everything perfectly straight away.",
     stress: "If you have been feeling really tired lately, you do not have to pretend that everything is fine. Sometimes stopping to rest is more important than forcing yourself to keep going. You are not failing. You have just been carrying a lot.",
     new: "Starting somewhere new can feel unsettling. I used to worry about saying the wrong thing or not knowing who to walk with. Later I realised that meeting one or two people first made many things feel easier.",
