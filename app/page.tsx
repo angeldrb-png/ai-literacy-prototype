@@ -2803,7 +2803,7 @@ const currentAvailableWorld = useMemo(() => {
                   <div className="text-sm font-medium text-slate-500">开始测试前</div>
                   <h2 className="mt-1 text-2xl font-semibold text-slate-900">先填写学生信息</h2>
                   <p className="mt-2 text-sm leading-7 text-slate-600">
-                    这一步只是在不改变现有学生端设计的前提下，把本次测试和学生身份绑定。教师端之后就能看到姓名、学号和班级。
+                    请输入你的个人信息。
                   </p>
                 </div>
                 <Link href="/teacher" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700">
