@@ -1,8 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isTeacherAuthenticatedFromRequest } from "@/lib/teacher-auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    if (!isTeacherAuthenticatedFromRequest(request)) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
     const [sessionCount, completedCount, sessions, averageScores] = await Promise.all([
       prisma.studentSession.count(),
       prisma.studentSession.count({ where: { status: "completed" } }),
