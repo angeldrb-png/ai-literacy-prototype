@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -41,6 +42,15 @@ type W3Recipient = "junior" | "stress" | "new" | "elder";
 
 
 type Locale = "zh-Hans" | "zh-Hant" | "en";
+
+type IdentityForm = {
+  studentName: string;
+  studentCode: string;
+  className: string;
+  schoolName: string;
+  gradeLevel: string;
+};
+
 
 const LOCALE_LABELS: Record<Locale, string> = {
   "zh-Hans": "简",
@@ -937,6 +947,17 @@ export default function Page() {
     w4: false,
     w5: false,
   });
+  const [sessionId, setSessionId] = useState("");
+  const [sessionCode, setSessionCode] = useState("");
+  const [identity, setIdentity] = useState<IdentityForm>({
+    studentName: "",
+    studentCode: "",
+    className: "",
+    schoolName: "",
+    gradeLevel: "",
+  });
+  const [identityError, setIdentityError] = useState("");
+  const [startingSession, setStartingSession] = useState(false);
 
   // World 1
   const [w1Step, setW1Step] = useState(0);
@@ -1224,6 +1245,121 @@ export default function Page() {
     resetAllForLocale();
   }
 
+  async function postJson(path: string, payload: Record<string, any>) {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || (json && json.ok === false)) {
+      throw new Error(json?.error || `Request failed: ${path}`);
+    }
+    return json;
+  }
+
+  async function startStudentSession() {
+    if (!identity.studentName.trim() || !identity.studentCode.trim() || !identity.className.trim()) {
+      setIdentityError(locale === "en" ? "Please fill in name, student code, and class." : locale === "zh-Hant" ? "請先填寫姓名、學號和班級。" : "请先填写姓名、学号和班级。");
+      return;
+    }
+    try {
+      setStartingSession(true);
+      setIdentityError("");
+      const json = await postJson("/api/session/start", {
+        language: locale,
+        deviceType: "web",
+        regionNote: "prototype",
+        studentName: identity.studentName,
+        studentCode: identity.studentCode,
+        className: identity.className,
+        schoolName: identity.schoolName,
+        gradeLevel: identity.gradeLevel,
+      });
+      setSessionId(json.session.id);
+      setSessionCode(json.session.sessionCode);
+    } catch (error) {
+      setIdentityError(error instanceof Error ? error.message : "Failed to start session");
+    } finally {
+      setStartingSession(false);
+    }
+  }
+
+  async function trackEvent(payload: Record<string, any>) {
+    if (!sessionId) return;
+    try {
+      await postJson("/api/event", {
+        sessionId,
+        ...payload,
+      });
+    } catch (error) {
+      console.error("trackEvent failed", error);
+    }
+  }
+
+  async function saveStep(worldId: WorldId, stepId: string, responseJson: Record<string, any>) {
+    if (!sessionId) return;
+    try {
+      await postJson("/api/response/save", {
+        sessionId,
+        worldId,
+        stepId,
+        responseJson,
+      });
+    } catch (error) {
+      console.error("saveStep failed", error);
+    }
+  }
+
+  async function saveSubmission(worldId: WorldId, submissionType: "info_card" | "warm_card" | "workflow_card" | "model_card_lite", content: string, selfCheckJson?: Record<string, any>) {
+    if (!sessionId) return;
+    try {
+      await postJson("/api/submission", {
+        sessionId,
+        worldId,
+        submissionType,
+        content,
+        selfCheckJson,
+      });
+    } catch (error) {
+      console.error("saveSubmission failed", error);
+    }
+  }
+
+  async function runScore() {
+    if (!sessionId) return;
+    try {
+      await postJson("/api/score/run", { sessionId });
+    } catch (error) {
+      console.error("runScore failed", error);
+    }
+  }
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const worldId = screen === "home" ? "home" : screen;
+    const stepId =
+      screen === "home"
+        ? "home"
+        : screen === "w1"
+        ? `w1_step_${w1Step + 1}`
+        : screen === "w2"
+        ? `w2_step_${w2Step + 1}`
+        : screen === "w3"
+        ? `w3_step_${w3Step + 1}`
+        : screen === "w4"
+        ? `w4_step_${w4Step + 1}`
+        : `w5_step_${w5Step + 1}`;
+
+    void trackEvent({
+      worldId,
+      stepId,
+      eventType: "navigation",
+      eventName: screen === "home" ? "home_view" : `${screen}_view`,
+      eventValueJson: { locale },
+    });
+  }, [sessionId, screen, w1Step, w2Step, w3Step, w4Step, w5Step, locale]);
+
 const currentAvailableWorld = useMemo(() => {
     for (const id of WORLD_ORDER) {
       const idx = WORLD_ORDER.indexOf(id);
@@ -1236,13 +1372,69 @@ const currentAvailableWorld = useMemo(() => {
   const doneCount = useMemo(() => WORLD_ORDER.filter((id) => completed[id]).length, [completed]);
 
   function openWorld(id: WorldId) {
+    if (!sessionId) return;
     const idx = WORLD_ORDER.indexOf(id);
     const unlocked = idx === 0 || completed[WORLD_ORDER[idx - 1]];
     if (!unlocked) return;
     setScreen(id);
   }
 
-  function finishWorld(id: WorldId) {
+  async function finishWorld(id: WorldId) {
+    if (id === "w1") {
+      await saveStep("w1", "w1_step2", {
+        mode: w1Mode,
+        logic: "learning",
+        visitedModes: w1VisitedModes,
+        bestMode: w1BestMode,
+        narrowMode: w1NarrowMode,
+      });
+      await saveStep("w1", "w1_step3", { rules: w1Rules });
+      await saveSubmission("w1", "workflow_card", `${w1Good}\n\n${w1Warn}`);
+    } else if (id === "w2") {
+      await saveStep("w2", "w2_step1", { choice: w2RoleChoice });
+      await saveStep("w2", "w2_step2", { choice: w2DraftChoice });
+      await saveStep("w2", "w2_step3", { flaggedClaims: w2ClaimStatus });
+      await saveSubmission("w2", "info_card", w2FinalReason);
+    } else if (id === "w3") {
+      await saveStep("w3", "w3_step1", { recipient: w3Recipient });
+      await saveStep("w3", "w3_step2", { draft: w3Draft });
+      await saveStep("w3", "w3_step3", { promptTags: w3PromptTags });
+      await saveSubmission("w3", "warm_card", w3FinalText, {
+        kept_own_ideas: w3Checklist.some((item) => item.includes("自己的例子") || item.includes("自己的例子或想法")),
+        did_not_copy: w3Checklist.some((item) => item.includes("没有直接整段照搬") || item.includes("没有直接照搬")),
+        understands_ai_generates_from_prompts: w3Checklist.some((item) => item.includes("根据提示生成内容")),
+        checklist: w3Checklist,
+      });
+    } else if (id === "w4") {
+      await saveStep("w4", "w4_step1", { useAiChoice: w4UseChoice });
+      await saveStep("w4", "w4_step2", { aiTasks: w4AiTasks, humanTasks: w4HumanStillDo });
+      await saveStep("w4", "w4_step3", { aiRole: w4Role });
+      await saveStep("w4", "w4_step4", { adjustedWorkflow: true, rules: w4Rules, reminder: w4Reminder });
+      await saveSubmission("w4", "workflow_card", `${w4Rules.join("；")}\n\n${w4Reminder}`);
+    } else if (id === "w5") {
+      await saveStep("w5", "w5_step1", { choice: w5Problem });
+      await saveStep("w5", "w5_step2", { choice: w5Cause });
+      await saveStep("w5", "w5_step3", { selectedTrainingImages: w5Training });
+      await saveStep("w5", "w5_step4", { selectedReminders: w5Reminders });
+      await saveSubmission(
+        "w5",
+        "model_card_lite",
+        `用途：${w5Card.purpose}\n限制：${w5Card.limits}\n提醒：${w5Card.reminder}\n改进：${w5Card.improve}`
+      );
+      if (sessionId) {
+        try {
+          await postJson("/api/session/end", {
+            sessionId,
+            currentWorld: "w5",
+            currentStep: "w5_done",
+            status: "completed",
+          });
+        } catch (error) {
+          console.error("session end failed", error);
+        }
+      }
+    }
+    await runScore();
     setCompleted((prev) => ({ ...prev, [id]: true }));
     setScreen("home");
   }
@@ -1328,7 +1520,7 @@ const currentAvailableWorld = useMemo(() => {
     setW1VisitedModes((prev) => (prev.includes(mode) ? prev : [...prev, mode]));
   }
 
-  function submitCreativePrompt() {
+  async function submitCreativePrompt() {
     if (!w3Recipient) return;
     const finalPrompt = w3Prompt.trim() || "请帮我把这张卡片改得更清楚一点。";
     const turn = w3Chat.filter((m) => m.role === "ai").length + 1;
@@ -1342,6 +1534,14 @@ const currentAvailableWorld = useMemo(() => {
     setW3Chat((prev) => [...prev, { role: "user", text: finalPrompt }, { role: "ai", text: aiText }]);
     setW3FinalText(aiText);
     setW3Prompt("");
+    if (sessionId) {
+      try {
+        await postJson("/api/chat/log", { sessionId, worldId: "w3", turnNo: turn, role: "user", content: finalPrompt });
+        await postJson("/api/chat/log", { sessionId, worldId: "w3", turnNo: turn, role: "ai", content: aiText });
+      } catch (error) {
+        console.error("chat log failed", error);
+      }
+    }
   }
 
   const world1Cards = learningCardsByModeData[w1Mode];
@@ -1350,7 +1550,25 @@ const currentAvailableWorld = useMemo(() => {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(99,102,241,0.10),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.08),_transparent_24%),linear-gradient(to_bottom_right,_#f8fafc,_#ffffff,_#eef2ff)] text-slate-900">
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-8">
-        <div className="mb-4 flex justify-end"><LanguageSwitcher locale={locale} onChange={changeLocale} /></div>
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/teacher" className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+              教师端
+            </Link>
+            {sessionId ? (
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                <span className="font-medium">{identity.studentName || "学生"}</span>
+                <span>{identity.studentCode}</span>
+                <span>{sessionCode}</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                先填写身份信息再开始任务
+              </div>
+            )}
+          </div>
+          <LanguageSwitcher locale={locale} onChange={changeLocale} />
+        </div>
         <AnimatePresence mode="wait">
           {screen === "home" && (
             <motion.div
@@ -2576,6 +2794,60 @@ const currentAvailableWorld = useMemo(() => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {!sessionId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
+            <div className="w-full max-w-2xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl md:p-8">
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-sm font-medium text-slate-500">开始测试前</div>
+                  <h2 className="mt-1 text-2xl font-semibold text-slate-900">先填写学生信息</h2>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">
+                    这一步只是在不改变现有学生端设计的前提下，把本次测试和学生身份绑定。教师端之后就能看到姓名、学号和班级。
+                  </p>
+                </div>
+                <Link href="/teacher" className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700">
+                  进入教师端
+                </Link>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <div className="mb-2 text-sm font-medium text-slate-700">姓名 *</div>
+                  <input value={identity.studentName} onChange={(e) => setIdentity((prev) => ({ ...prev, studentName: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400" />
+                </label>
+                <label className="block">
+                  <div className="mb-2 text-sm font-medium text-slate-700">学号 *</div>
+                  <input value={identity.studentCode} onChange={(e) => setIdentity((prev) => ({ ...prev, studentCode: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400" />
+                </label>
+                <label className="block">
+                  <div className="mb-2 text-sm font-medium text-slate-700">班级 *</div>
+                  <input value={identity.className} onChange={(e) => setIdentity((prev) => ({ ...prev, className: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400" />
+                </label>
+                <label className="block">
+                  <div className="mb-2 text-sm font-medium text-slate-700">学校</div>
+                  <input value={identity.schoolName} onChange={(e) => setIdentity((prev) => ({ ...prev, schoolName: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400" />
+                </label>
+                <label className="block md:col-span-2">
+                  <div className="mb-2 text-sm font-medium text-slate-700">年级</div>
+                  <input value={identity.gradeLevel} onChange={(e) => setIdentity((prev) => ({ ...prev, gradeLevel: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400" />
+                </label>
+              </div>
+
+              {identityError ? <div className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{identityError}</div> : null}
+
+              <div className="mt-6 flex items-center justify-end gap-3">
+                <button
+                  onClick={startStudentSession}
+                  disabled={startingSession}
+                  className="rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white disabled:opacity-60"
+                >
+                  {startingSession ? "正在开始…" : "开始测试"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model StudentSession {
+  id           String         @id @default(uuid())
+  sessionCode  String         @unique
+  language     String
+  startedAt    DateTime       @default(now())
+  finishedAt   DateTime?
+  currentWorld String?
+  currentStep  String?
+  status       String         @default("in_progress")
+  deviceType   String?
+  regionNote   String?
+
+  studentName  String?
+  studentCode  String?
+  className    String?
+  schoolName   String?
+  gradeLevel   String?
+
+  events       EventLog[]
+  responses    StepResponse[]
+  chatTurns    AIChatTurn[]
+  submissions  Submission[]
+  scores       ScoreResult[]
+  teacherNotes TeacherNote[]
+
+  @@index([status])
+  @@index([language])
+  @@index([studentCode])
+  @@index([className])
+}
+
+model EventLog {
+  id             String         @id @default(uuid())
+  sessionId      String
+  worldId        String
+  stepId         String?
+  eventType      String
+  eventName      String
+  eventValueJson Json?
+  createdAt      DateTime       @default(now())
+
+  session StudentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, worldId])
+  @@index([eventName])
+  @@index([createdAt])
+}
+
+model StepResponse {
+  id           String   @id @default(uuid())
+  sessionId    String
+  worldId      String
+  stepId       String
+  responseJson Json
+  savedAt      DateTime @default(now())
+
+  session StudentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, worldId, stepId])
+  @@index([sessionId, worldId])
+}
+
+model AIChatTurn {
+  id        String   @id @default(uuid())
+  sessionId String
+  worldId   String
+  turnNo    Int
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  session StudentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, worldId])
+  @@index([turnNo])
+}
+
+model Submission {
+  id             String   @id @default(uuid())
+  sessionId      String
+  worldId        String
+  submissionType String
+  content        String
+  selfCheckJson  Json?
+  submittedAt    DateTime @default(now())
+
+  session StudentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, worldId])
+  @@index([sessionId, worldId])
+}
+
+model ScoreResult {
+  id            String   @id @default(uuid())
+  sessionId     String
+  worldId       String
+  competenceId  String
+  domainId      String
+  score         Float
+  evidenceJson  Json
+  rubricVersion String
+  scoredAt      DateTime @default(now())
+
+  session StudentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, worldId])
+  @@index([competenceId])
+  @@index([domainId])
+}
+
+model RubricSnapshot {
+  id           String   @id @default(uuid())
+  version      String
+  worldId      String
+  competenceId String
+  domainId     String
+  ruleJson     Json
+  createdAt    DateTime @default(now())
+
+  @@unique([version, worldId, competenceId])
+}
+
+model TeacherNote {
+  id        String   @id @default(uuid())
+  sessionId String
+  noteText  String
+  createdAt DateTime @default(now())
+
+  session StudentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
