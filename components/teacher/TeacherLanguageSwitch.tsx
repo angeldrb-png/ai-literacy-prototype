@@ -3,6 +3,12 @@
 import { teacherLocaleOptions } from "@/lib/teacher-i18n";
 import { useTeacherLocale } from "./useTeacherLocale";
 
+const localeLabelMap = {
+  "zh-Hans": "简",
+  "zh-Hant": "繁",
+  en: "EN",
+} as const;
+
 export default function TeacherLanguageSwitch() {
   const { locale, setLocale } = useTeacherLocale();
 
@@ -18,7 +24,7 @@ export default function TeacherLanguageSwitch() {
               : "rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
           }
         >
-          {lang}
+          {localeLabelMap[lang]}
         </button>
       ))}
     </div>
