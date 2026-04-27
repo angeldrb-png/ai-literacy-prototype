@@ -1452,15 +1452,20 @@ export default function Page() {
   const [w2FinalReason, setW2FinalReason] = useState("");
 
   // World 3
-  const [w3Step, setW3Step] = useState(0);
-  const [w3Recipient, setW3Recipient] = useState<W3Recipient | "">("");
-  const [w3Draft, setW3Draft] = useState("");
-  const [w3Prompt, setW3Prompt] = useState("");
-  const [w3PromptTags, setW3PromptTags] = useState<string[]>([]);
-  const [w3Chat, setW3Chat] = useState<ChatMessage[]>([]);
-  const [w3FinalText, setW3FinalText] = useState("");
-  const [w3Checklist, setW3Checklist] = useState<string[]>([]);
+// World 3
+const [w3Step, setW3Step] = useState(0);
+const [w3Recipient, setW3Recipient] = useState<W3Recipient | "">("");
+const [w3Draft, setW3Draft] = useState("");
+const [w3Prompt, setW3Prompt] = useState("");
+const [w3PromptTags, setW3PromptTags] = useState<string[]>([]);
+const [w3Chat, setW3Chat] = useState<ChatMessage[]>([]);
+const [w3FinalText, setW3FinalText] = useState("");
+const [w3Checklist, setW3Checklist] = useState<string[]>([]);
 
+// World 3 Step 5: AI collaboration review
+const [w3HelpfulTags, setW3HelpfulTags] = useState<string[]>([]);
+const [w3LimitationTags, setW3LimitationTags] = useState<string[]>([]);
+const [w3UsabilityFeedback, setW3UsabilityFeedback] = useState("");
   // World 4
   const [w4Step, setW4Step] = useState(0);
   const [w4AiTasks, setW4AiTasks] = useState<string[]>([]);
@@ -1485,6 +1490,11 @@ export default function Page() {
 
   
   const worldMeta = useMemo(() => getLocalizedWorldMeta(locale), [locale]);
+
+  useEffect(() => {
+  const saved = readSavedLocale();
+  setLocale(saved);
+}, []);
 
   const learningCardsByModeData = useMemo(() => ({
     personal: [
@@ -1593,6 +1603,66 @@ export default function Page() {
     "不要太正式",
   ], [locale]);
 
+
+  const w3HelpfulReviewTags = useMemo(
+  () =>
+    locale === "en"
+      ? [
+          "Made my message clearer",
+          "Made the tone warmer",
+          "Helped me write more for the recipient",
+          "Helped me notice what could be improved",
+          "Did not help much",
+        ]
+      : locale === "zh-Hant"
+      ? [
+          "讓表達更清楚",
+          "讓語氣更溫暖",
+          "幫我想到更適合對象的說法",
+          "幫我發現原稿可以改進的地方",
+          "沒有太大幫助",
+        ]
+      : [
+          "让表达更清楚",
+          "让语气更温暖",
+          "帮我想到更适合对象的说法",
+          "帮我发现原稿可以改进的地方",
+          "没有太大帮助",
+        ],
+  [locale]
+);
+
+const w3LimitationReviewTags = useMemo(
+  () =>
+    locale === "en"
+      ? [
+          "A bit too generic",
+          "A bit too formal",
+          "Did not sound like my voice",
+          "Did not fit my chosen recipient enough",
+          "Did not keep my example or feeling well",
+          "No obvious problem",
+        ]
+      : locale === "zh-Hant"
+      ? [
+          "有點太普通",
+          "有點太正式",
+          "不太像我的語氣",
+          "不夠適合我選擇的對象",
+          "沒有保留好我的例子或感受",
+          "沒有明顯問題",
+        ]
+      : [
+          "有点太普通",
+          "有点太正式",
+          "不太像我的语气",
+          "不够适合我选择的对象",
+          "没有保留好我的例子或感受",
+          "没有明显问题",
+        ],
+  [locale]
+);
+
   const commuteSurveyData = useMemo(() => locale === "en" ? [
     { type: "Walk", count: 18, note: "Many students live near the school" },
     { type: "Car ride from family", count: 12, note: "Mostly concentrated during morning rush hour" },
@@ -1697,21 +1767,38 @@ export default function Page() {
     ],
   }, [locale]);
 
-  function resetAllForLocale() {
-    setCompleted({ w1: false, w2: false, w3: false, w4: false, w5: false });
-    setScreen("home");
-    setW1Step(0); setW1OpenedCards([]); setW1Mode("personal"); setW1VisitedModes(["personal"]); setW1BestMode(""); setW1NarrowMode(""); setW1Rules({ explainReason: true, teacherReview: true, tryNewThings: true, onlyPopular: false, sayWhatDataUsed: true }); setW1Good(""); setW1Warn("");
-    setW2Step(0); setW2RoleChoice(""); setW2DraftChoice(""); setW2ClaimStatus({}); setW2FinalReason("");
-    setW3Step(0); setW3Recipient(""); setW3Draft(""); setW3Prompt(""); setW3PromptTags([]); setW3Chat([]); setW3FinalText(""); setW3Checklist([]);
-    setW4Step(0); setW4AiTasks([]); setW4Role(""); setW4UseChoice(""); setW4HumanStillDo([]); setW4Rules([]); setW4Reminder("");
-    setW5Step(0); setW5Problem(""); setW5Cause(""); setW5Training([]); setW5Reminders([]); setW5Card({ purpose: "", limits: "", reminder: "", improve: "" });
+  function changeLocale(next: Locale) {
+  if (next === locale) return;
+
+  setLocale(next);
+
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem("site_lang", next);
   }
 
-  function changeLocale(next: Locale) {
-    if (next === locale) return;
-    setLocale(next);
-    resetAllForLocale();
-  }
+  void trackEvent({
+    worldId: screen === "home" ? "home" : screen,
+    stepId:
+      screen === "home"
+        ? "home"
+        : screen === "w1"
+        ? `w1_step${w1Step + 1}`
+        : screen === "w2"
+        ? `w2_step${w2Step + 1}`
+        : screen === "w3"
+        ? `w3_step${w3Step + 1}`
+        : screen === "w4"
+        ? `w4_step${w4Step + 1}`
+        : `w5_step${w5Step + 1}`,
+    eventType: "interaction",
+    eventName: "switch_language",
+    eventValueJson: {
+      from: locale,
+      to: next,
+      screen,
+    },
+  });
+}
 
   async function postJson(path: string, payload: Record<string, any>) {
     const res = await fetch(path, {
@@ -1764,6 +1851,46 @@ export default function Page() {
       console.warn("trackEvent failed", error);
     }
   }
+
+  function toggleW3HelpfulReviewTag(tag: string) {
+  const next = w3HelpfulTags.includes(tag)
+    ? w3HelpfulTags.filter((item) => item !== tag)
+    : w3HelpfulTags.length >= 2
+    ? w3HelpfulTags
+    : [...w3HelpfulTags, tag];
+
+  if (next === w3HelpfulTags) return;
+
+  setW3HelpfulTags(next);
+
+  void trackEvent({
+    worldId: "w3",
+    stepId: "w3_step5",
+    eventType: "selection",
+    eventName: "w3_select_ai_helpful_tags",
+    eventValueJson: { selectedValues: next },
+  });
+}
+
+function toggleW3LimitationReviewTag(tag: string) {
+  const next = w3LimitationTags.includes(tag)
+    ? w3LimitationTags.filter((item) => item !== tag)
+    : w3LimitationTags.length >= 2
+    ? w3LimitationTags
+    : [...w3LimitationTags, tag];
+
+  if (next === w3LimitationTags) return;
+
+  setW3LimitationTags(next);
+
+  void trackEvent({
+    worldId: "w3",
+    stepId: "w3_step5",
+    eventType: "selection",
+    eventName: "w3_select_ai_limitation_tags",
+    eventValueJson: { selectedValues: next },
+  });
+}
 
   async function saveStep(worldId: WorldId, stepId: string, responseJson: Record<string, any>) {
     if (!sessionId) return;
@@ -1864,16 +1991,61 @@ const currentAvailableWorld = useMemo(() => {
       await saveStep("w2", "w2_step3", { flaggedClaims: w2ClaimStatus });
       await saveSubmission("w2", "info_card", w2FinalReason);
     } else if (id === "w3") {
-      await saveStep("w3", "w3_step1", { recipient: w3Recipient });
-      await saveStep("w3", "w3_step2", { draft: w3Draft });
-      await saveStep("w3", "w3_step3", { promptTags: w3PromptTags });
-      await saveSubmission("w3", "warm_card", w3FinalText, {
-        kept_own_ideas: w3Checklist.some((item) => item.includes("自己的例子") || item.includes("自己的例子或想法")),
-        did_not_copy: w3Checklist.some((item) => item.includes("没有直接整段照搬") || item.includes("没有直接照搬")),
-        understands_ai_generates_from_prompts: w3Checklist.some((item) => item.includes("根据提示生成内容")),
-        checklist: w3Checklist,
-      });
-    } else if (id === "w4") {
+  await saveStep("w3", "w3_step1", { recipient: w3Recipient });
+  await saveStep("w3", "w3_step2", { draft: w3Draft });
+  await saveStep("w3", "w3_step3", { promptTags: w3PromptTags });
+
+  await saveStep("w3", "w3_step5", {
+    aiHelpfulTags: w3HelpfulTags,
+    aiLimitationTags: w3LimitationTags,
+    aiUsabilityFeedback: w3UsabilityFeedback,
+    usabilityFeedbackScored: false,
+  });
+
+  await saveSubmission("w3", "warm_card", w3FinalText, {
+    kept_own_ideas: w3Checklist.some(
+      (item) =>
+        item.includes("自己的例子") ||
+      item.includes("自己的例子或想法") ||
+            item.includes("自己的例子或想法")
+  ),
+  revised_ai_sentence: w3Checklist.some(
+    (item) => item.includes("改过 AI") || item.includes("改過 AI")
+  ),
+  did_not_copy: w3Checklist.some(
+    (item) =>
+      item.includes("没有直接整段照搬") ||
+      item.includes("沒有直接整段照搬") ||
+      item.includes("没有直接照搬")
+  ),
+  understands_ai_generates_from_prompts: w3Checklist.some(
+    (item) =>
+      item.includes("根据提示生成内容") ||
+      item.includes("根據提示生成內容")
+  ),
+  checklist: w3Checklist,
+
+  ai_collaboration_review: {
+    helpful_tags: w3HelpfulTags,
+    limitation_tags: w3LimitationTags,
+    usability_feedback: w3UsabilityFeedback,
+    usability_feedback_scored: false,
+  },
+});
+
+  await trackEvent({
+    worldId: "w3",
+    stepId: "w3_step5",
+    eventType: "submit",
+    eventName: "w3_submit_ai_collaboration_review",
+    eventValueJson: {
+      helpfulTags: w3HelpfulTags,
+      limitationTags: w3LimitationTags,
+      hasUsabilityFeedback: w3UsabilityFeedback.trim().length > 0,
+      usabilityFeedbackScored: false,
+    },
+  });
+} else if (id === "w4") {
       await saveStep("w4", "w4_step1", { useAiChoice: w4UseChoice });
       await saveStep("w4", "w4_step2", { aiTasks: w4AiTasks, humanTasks: w4HumanStillDo });
       await saveStep("w4", "w4_step3", { aiRole: w4Role });
@@ -1940,14 +2112,22 @@ const currentAvailableWorld = useMemo(() => {
   }, [w2RoleChoice, w2DraftChoice, w2ClaimsDone, w2FinalReason]);
 
   const p3 = useMemo(() => {
-    let s = 0;
-    if (w3Recipient) s += 20;
-    if (w3Draft.trim().length > 20) s += 20;
-    if (w3Chat.length > 0) s += 20;
-    if (w3FinalText.trim().length > 20) s += 20;
-    if (w3Checklist.length >= 3) s += 20;
-    return s;
-  }, [w3Recipient, w3Draft, w3Chat.length, w3FinalText, w3Checklist.length]);
+  let s = 0;
+  if (w3Recipient) s += 20;
+  if (w3Draft.trim().length > 20) s += 20;
+  if (w3Chat.length > 0) s += 20;
+  if (w3FinalText.trim().length > 20 && w3Checklist.length >= 3) s += 20;
+  if (w3HelpfulTags.length > 0 && w3LimitationTags.length > 0) s += 20;
+  return s;
+}, [
+  w3Recipient,
+  w3Draft,
+  w3Chat.length,
+  w3FinalText,
+  w3Checklist.length,
+  w3HelpfulTags.length,
+  w3LimitationTags.length,
+]);
 
   const p4 = useMemo(() => {
     let s = 0;
@@ -2637,7 +2817,31 @@ const currentAvailableWorld = useMemo(() => {
                 color={worldMeta.w3.color}
                 icon={worldMeta.w3.icon}
                 progress={p3}
-                steps={locale === "en" ? ["1. Choose a recipient", "2. Write a first draft", "3. Revise with AI", "4. Submit your card"] : locale === "zh-Hant" ? ["1. 選對象", "2. 寫初稿", "3. 和 AI 一起改", "4. 提交卡片"] : ["1. 选对象", "2. 写初稿", "3. 和AI一起改", "4. 提交卡片"]}
+                steps={
+                  locale === "en"
+                    ? [
+                      "1. Choose a recipient",
+                      "2. Write a first draft",
+                      "3. Revise with AI",
+                      "4. Submit your card",
+                      "5. AI collaboration review",
+                      ]
+                    : locale === "zh-Hant"
+                    ? [
+                      "1. 選對象",
+                      "2. 寫初稿",
+                      "3. 和 AI 修改",
+                      "4. 提交卡片",
+                      "5. AI 合作復盤",
+                      ]
+                    : [
+                      "1. 选对象",
+                      "2. 写初稿",
+                      "3. 和 AI 修改",
+                      "4. 提交卡片",
+                      "5. AI 合作复盘",
+                      ]
+                }
                 activeStep={w3Step}
                 onBack={() => setScreen("home")}
                 locale={locale}
@@ -2843,20 +3047,157 @@ const currentAvailableWorld = useMemo(() => {
                   </div>
                   <div className="mt-4 flex justify-end">
                     <Button
-                      disabled={!(w3FinalText.trim().length > 20 && w3Checklist.length >= 3)}
-                      onClick={() => finishWorld("w3")}
+                       disabled={!(w3FinalText.trim().length > 20 && w3Checklist.length >= 3)}
+                       onClick={() => setW3Step(4)}
                     >
-                      提交我的卡片
+                      {locale === "en"
+                      ? "Next: AI collaboration review"
+                      : locale === "zh-Hant"
+                      ? "下一步：AI 合作復盤"
+                      : "下一步：AI 合作复盘"}
                     </Button>
                   </div>
                 </Section>
               )}
 
+              {w3Step === 4 && (
+  <Section
+    title={
+      locale === "en"
+        ? "AI collaboration review"
+        : locale === "zh-Hant"
+        ? "AI 合作復盤"
+        : "AI 合作复盘"
+    }
+    description={
+      locale === "en"
+        ? "AI gave suggestions, but you decided how to use them. Choose a few tags to review this collaboration."
+        : locale === "zh-Hant"
+        ? "AI 給了建議，但最後怎樣使用，仍然由你決定。請用幾個標籤簡單回顧這次合作。"
+        : "AI 给了建议，但最后怎么使用，仍然由你决定。请用几个标签简单回顾这次合作。"
+    }
+  >
+    <div className="space-y-6">
+      <div className="rounded-3xl bg-slate-50 p-4">
+        <div className="mb-2 text-sm font-semibold text-slate-800">
+          {locale === "en"
+            ? "What did the AI help you with? Choose 1–2."
+            : locale === "zh-Hant"
+            ? "這次 AI 哪些地方幫到了你？可以選 1–2 個。"
+            : "这次 AI 哪些地方帮到了你？可以选 1–2 个。"}
+        </div>
+        <div className="mb-3 text-xs text-slate-500">
+          {locale === "en"
+            ? "This part is used as AI literacy evidence."
+            : locale === "zh-Hant"
+            ? "這部分會作為 AI 素養證據。"
+            : "这部分会作为 AI 素养证据。"}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {w3HelpfulReviewTags.map((tag) => (
+            <TagButton
+              key={tag}
+              active={w3HelpfulTags.includes(tag)}
+              onClick={() => toggleW3HelpfulReviewTag(tag)}
+            >
+              {tag}
+            </TagButton>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-3xl bg-slate-50 p-4">
+        <div className="mb-2 text-sm font-semibold text-slate-800">
+          {locale === "en"
+            ? "What was not good enough about the AI suggestions? Choose 1–2."
+            : locale === "zh-Hant"
+            ? "你覺得 AI 的建議哪裡還不夠好？可以選 1–2 個。"
+            : "你觉得 AI 的建议哪里还不够好？可以选 1–2 个。"}
+        </div>
+        <div className="mb-3 text-xs text-slate-500">
+          {locale === "en"
+            ? "This helps show whether you can notice the limits of AI output."
+            : locale === "zh-Hant"
+            ? "這可以幫助了解你是否能看出 AI 輸出的限制。"
+            : "这可以帮助了解你是否能看出 AI 输出的限制。"}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {w3LimitationReviewTags.map((tag) => (
+            <TagButton
+              key={tag}
+              active={w3LimitationTags.includes(tag)}
+              onClick={() => toggleW3LimitationReviewTag(tag)}
+            >
+              {tag}
+            </TagButton>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-4">
+        <div className="mb-2 text-sm font-semibold text-slate-800">
+          {locale === "en"
+            ? "Optional product feedback — not scored"
+            : locale === "zh-Hant"
+            ? "可選產品回饋——不計分"
+            : "可选产品反馈——不计分"}
+        </div>
+        <p className="mb-3 text-xs leading-6 text-slate-500">
+          {locale === "en"
+            ? "You can write one sentence about how this AI helper could be improved."
+            : locale === "zh-Hant"
+            ? "你可以用一句話說說這個 AI 助手還可以怎樣改進。"
+            : "你可以用一句话说说这个 AI 助手还可以怎样改进。"}
+        </p>
+        <textarea
+          value={w3UsabilityFeedback}
+          onChange={(e) => setW3UsabilityFeedback(e.target.value)}
+          onBlur={() => {
+            if (w3UsabilityFeedback.trim().length > 0) {
+              void trackEvent({
+                worldId: "w3",
+                stepId: "w3_step5",
+                eventType: "save",
+                eventName: "w3_save_ai_usability_feedback",
+                eventValueJson: {
+                  textLength: w3UsabilityFeedback.trim().length,
+                  scored: false,
+                },
+              });
+            }
+          }}
+          className="min-h-[120px] w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none focus:border-slate-400"
+          placeholder={
+            locale === "en"
+              ? "For example: I hope it can understand my draft better, or ask me one more question before revising."
+              : locale === "zh-Hant"
+              ? "例如：希望它更理解我的初稿，或者修改前多問我一個問題。"
+              : "例如：希望它更理解我的初稿，或者修改前多问我一个问题。"
+          }
+        />
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          disabled={!(w3HelpfulTags.length > 0 && w3LimitationTags.length > 0)}
+          onClick={() => finishWorld("w3")}
+        >
+          {locale === "en"
+            ? "Complete World 3"
+            : locale === "zh-Hant"
+            ? "完成世界 3"
+            : "完成世界 3"}
+        </Button>
+      </div>
+    </div>
+  </Section>
+)}
+
               <Nav
                 locale={locale}
                 step={w3Step}
                 setStep={setW3Step}
-                maxStep={3}
+                maxStep={4}
                 canNext={
                   (w3Step === 0 && !!w3Recipient) ||
                   (w3Step === 1 && w3Draft.trim().length > 20) ||
