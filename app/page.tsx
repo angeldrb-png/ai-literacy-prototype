@@ -747,7 +747,7 @@ const draftSamples: Record<W3Recipient, string> = {
   new:
     "刚来到一个新地方的时候，真的会有点不安。我以前也会担心自己说错话、找不到人一起走。后来我发现，只要先认识一两个愿意打招呼的人，很多事情都会慢慢变容易。",
   elder:
-    "谢谢您一直愿意听我们说学校里的事。有时候我会觉得，能有人安静地听我说一小段日常，就已经很温暖了。希望您每天都能有一点轻松和开心。",
+    "谢谢您每次见到我们都会笑着打招呼。有时候，光是听到您温柔地问一句“今天过得怎么样”，就会让人心里暖暖的。也希望您每天都能感受到别人对您的关心。",
 };
 
 const promptTags = [
@@ -758,27 +758,244 @@ const promptTags = [
   "不要太正式",
 ];
 
-function buildCreativeReply(recipient: W3Recipient | "", prompt: string, sourceText: string, turn: number) {
-  const openers: Record<string, string> = {
-    junior: "刚上中学的时候，紧张真的很正常。",
-    stress: "如果你最近真的很累，也可以先让自己停一下。",
-    new: "来到新地方会有一点不安，真的很正常。",
-    elder: "谢谢您一直愿意温柔地听我们说话。",
-  };
-  const endings: Record<string, string> = {
-    junior: "你不用一下子把所有事情都做好，慢慢来也很好。",
-    stress: "你不是不够好，你只是已经很辛苦了。",
-    new: "你不用马上变得很厉害，先安心下来就很好。",
-    elder: "也希望您每天都能有一点轻松和开心。",
-  };
-  const keepVoice = /保留我的语气|像/.test(prompt);
-  const keepExample = /例子/.test(prompt);
-  const first = keepVoice && sourceText ? `${sourceText.split("。")[0]}。` : openers[recipient] || openers.junior;
-  const middle = keepExample && sourceText
-    ? `${sourceText.split("。")[1] ? sourceText.split("。")[1] + "。" : sourceText.split("。")[0] + "。"}`
-    : "有时候，先把自己的感受说清楚，就已经很了不起。";
-  return `${first} ${middle} ${endings[recipient] || endings.junior}${turn > 1 ? " 如果愿意，也可以先从一件小事开始。" : ""}`;
+type W3HelpTag =
+  | "keep_voice"
+  | "keep_example"
+  | "warmer_tone"
+  | "fit_recipient"
+  | "less_formal";
+
+type W3TextState =
+  | "too_short"
+  | "too_direct"
+  | "too_formal"
+  | "good_but_generic";
+
+function detectW3TextState(text: string): W3TextState {
+  const clean = text.trim();
+  const length = clean.length;
+
+  const directPattern =
+    /你应该|你要|不要想太多|赶快|快点|必须|應該|要快啲|必須|should|must|you need to/i;
+
+  const formalPattern =
+    /衷心|祝愿|希望您|愿你|愿您|誠摯|謹此|sincerely|wish you|I would like to/i;
+
+  if (length < 28) return "too_short";
+  if (directPattern.test(clean)) return "too_direct";
+  if (formalPattern.test(clean)) return "too_formal";
+  return "good_but_generic";
 }
+
+function detectW3HelpTag(prompt: string, selectedTags: string[]): W3HelpTag {
+  const merged = `${prompt} ${selectedTags.join(" ")}`;
+
+  if (/保留我的语气|保留我的語氣|keep my voice|自己的语气|自己的語氣/i.test(merged)) {
+    return "keep_voice";
+  }
+  if (/不要删掉我的例子|不要刪掉我的例子|keep my example|例子|經歷|经历/i.test(merged)) {
+    return "keep_example";
+  }
+  if (/写得更温暖一点|寫得更溫暖一點|warmer|温暖|溫暖/i.test(merged)) {
+    return "warmer_tone";
+  }
+  if (/更像写给这个人|更像寫給這個人|fit this person|写给这个人|寫給這個人/i.test(merged)) {
+    return "fit_recipient";
+  }
+  if (/不要太正式|less formal|太正式|太工整/i.test(merged)) {
+    return "less_formal";
+  }
+
+  return "warmer_tone";
+}
+
+const W3_RECIPIENT_WRAPPER: Record<
+  W3Recipient,
+  Record<Locale, { opener: string; closer: string }>
+> = {
+  junior: {
+    "zh-Hans": {
+      opener: "刚升上中学时，紧张和不适应都很正常。",
+      closer: "你不用一下子把所有事情都做好，先慢慢找到自己的节奏就可以。",
+    },
+    "zh-Hant": {
+      opener: "剛升上中學時，緊張和不適應都很正常。",
+      closer: "你不用一下子把所有事情都做好，先慢慢找到自己的節奏就可以。",
+    },
+    en: {
+      opener: "Feeling nervous when starting secondary school is completely normal.",
+      closer: "You do not need to handle everything at once. It is okay to settle in step by step.",
+    },
+  },
+  stress: {
+    "zh-Hans": {
+      opener: "如果你最近真的很累，先承认自己辛苦了，也是很重要的一步。",
+      closer: "你不是不够好，只是已经承担了很多，慢一点也没有关系。",
+    },
+    "zh-Hant": {
+      opener: "如果你最近真的很累，先承認自己辛苦了，也是很重要的一步。",
+      closer: "你不是不夠好，只是已經承擔了很多，慢一點也沒有關係。",
+    },
+    en: {
+      opener: "If you have been under a lot of pressure lately, it matters to first admit that this has been hard.",
+      closer: "It does not mean you are not good enough. It may simply mean you have been carrying a lot.",
+    },
+  },
+  new: {
+    "zh-Hans": {
+      opener: "来到一个新地方，会不安、会紧张，其实真的很正常。",
+      closer: "你不用马上变得很会适应，先让自己安心下来就已经很好了。",
+    },
+    "zh-Hant": {
+      opener: "來到一個新地方，會不安、會緊張，其實真的很正常。",
+      closer: "你不用馬上變得很會適應，先讓自己安心下來就已經很好了。",
+    },
+    en: {
+      opener: "Feeling unsure in a new place is very normal.",
+      closer: "You do not have to adapt immediately. Feeling a bit more settled is already a good start.",
+    },
+  },
+  elder: {
+    "zh-Hans": {
+      opener: "谢谢您一直愿意听别人说话，这份温柔本身就很珍贵。",
+      closer: "也希望您每天都能有一点轻松和被关心的感觉。",
+    },
+    "zh-Hant": {
+      opener: "謝謝您一直願意聽別人說話，這份溫柔本身就很珍貴。",
+      closer: "也希望您每天都能有一點輕鬆和被關心的感覺。",
+    },
+    en: {
+      opener: "Thank you for always being willing to listen. That kindness matters.",
+      closer: "I also hope you can feel cared for and a little more at ease each day.",
+    },
+  },
+};
+
+const W3_CORE_REPLY: Record<
+  W3HelpTag,
+  Record<W3TextState, Record<Locale, string>>
+> = {
+  keep_voice: {
+    too_short: {
+      "zh-Hans": "你这段已经有自己的意思了，但现在还太短，别人不太容易感受到你的关心。你可以先保留你最想说的一句，再补一句更具体的话。",
+      "zh-Hant": "你這段已經有自己的意思了，但現在還太短，別人不太容易感受到你的關心。你可以先保留你最想說的一句，再補一句更具體的話。",
+      en: "Your message already has your own intention, but it is still quite short. Keep the sentence you most want to say, then add one more specific line.",
+    },
+    too_direct: {
+      "zh-Hans": "你现在的语气是有个人感觉的，只是有一点太像在告诉对方该怎么做。可以先保留你的原话，再把最硬的一句稍微放软一点。",
+      "zh-Hant": "你現在的語氣是有個人感覺的，只是有一點太像在告訴對方該怎麼做。可以先保留你的原話，再把最硬的一句稍微放軟一點。",
+      en: "Your voice is there, but one part sounds a bit too much like telling the person what to do. Keep your wording, but soften the strongest sentence a little.",
+    },
+    too_formal: {
+      "zh-Hans": "现在这段有点太工整了，容易把你原本的感觉盖掉。你不用整段重写，只要把其中一两句改成更像你平时会说的话就够了。",
+      "zh-Hant": "現在這段有點太工整了，容易把你原本的感覺蓋掉。你不用整段重寫，只要把其中一兩句改成更像你平時會說的話就夠了。",
+      en: "This sounds a bit too polished, so your own voice is getting covered up. You do not need to rewrite everything. Just change one or two lines into something more natural for you.",
+    },
+    good_but_generic: {
+      "zh-Hans": "这段已经有你的声音了。接下来重点不是大改，而是看看有没有一句能更明显地让人听出这是你在对他说。",
+      "zh-Hant": "這段已經有你的聲音了。接下來重點不是大改，而是看看有沒有一句能更明顯地讓人聽出這是你在對他說。",
+      en: "Your voice is already there. The next step is not a big rewrite. Just make one line sound even more clearly like something you would personally say.",
+    },
+  },
+
+  keep_example: {
+    too_short: {
+      "zh-Hans": "你这段现在最大的问题不是例子被删掉，而是还没有真正放进自己的具体内容。你可以先加一个你自己经历过的小细节。",
+      "zh-Hant": "你這段現在最大的問題不是例子被刪掉，而是還沒有真正放進自己的具體內容。你可以先加一個你自己經歷過的小細節。",
+      en: "The main issue is not losing your example yet — it is that there is not much personal detail in the message. Add one small detail from your own experience first.",
+    },
+    too_direct: {
+      "zh-Hans": "你有自己的意思，但现在更像建议，不太像经验分享。你可以把你应该这类句子缩短一点，换成一小段你自己经历过的感受。",
+      "zh-Hant": "你有自己的意思，但現在更像建議，不太像經驗分享。你可以把你應該這類句子縮短一點，換成一小段你自己經歷過的感受。",
+      en: "You have your own message, but it sounds more like advice than experience. Try shortening the directive part and replacing it with a small feeling or example from your own experience.",
+    },
+    too_formal: {
+      "zh-Hans": "这段看起来比较完整，但你原本的个人感觉有点被磨平了。你可以保留整体结构，再把一处具体经历或感受补回来。",
+      "zh-Hant": "這段看起來比較完整，但你原本的個人感覺有點被磨平了。你可以保留整體結構，再把一處具體經歷或感受補回來。",
+      en: "This looks complete, but some of your personal feeling has been smoothed out. Keep the structure, and add back one concrete experience or feeling.",
+    },
+    good_but_generic: {
+      "zh-Hans": "这段已经有一些自己的内容了。现在最值得做的是检查：哪一句是你最想保留的个人经验，不要让它被改成太通用的话。",
+      "zh-Hant": "這段已經有一些自己的內容了。現在最值得做的是檢查：哪一句是你最想保留的個人經驗，不要讓它被改成太通用的話。",
+      en: "This already has some personal content. Now check which line contains the experience you most want to keep, and make sure it does not get turned into something too general.",
+    },
+  },
+
+  warmer_tone: {
+    too_short: {
+      "zh-Hans": "这段方向是好的，但现在还比较短，温度不太够。你可以加一句更像陪伴的话，而不只是简单鼓励一下。",
+      "zh-Hant": "這段方向是好的，但現在還比較短，溫度不太夠。你可以加一句更像陪伴的話，而不只是簡單鼓勵一下。",
+      en: "The direction is good, but it is still a bit short, so the warmth does not come through yet. Add one line that sounds more like staying with the person, not just cheering them on.",
+    },
+    too_direct: {
+      "zh-Hans": "这段意思很清楚，不过语气有点像在要求对方改变。你可以把最直接的一句改成更像理解对方、陪着对方的说法。",
+      "zh-Hant": "這段意思很清楚，不過語氣有點像在要求對方改變。你可以把最直接的一句改成更像理解對方、陪着對方的說法。",
+      en: "The meaning is clear, but the tone sounds a bit like asking the person to change. Try rewriting the strongest line so it sounds more understanding and supportive.",
+    },
+    too_formal: {
+      "zh-Hans": "这段不算冷，但有点太正式，所以温度会被削弱。你可以保留意思，把其中一句改成更像平时会说的话，通常就会温暖很多。",
+      "zh-Hant": "這段不算冷，但有點太正式，所以溫度會被削弱。你可以保留意思，把其中一句改成更像平時會說的話，通常就會溫暖很多。",
+      en: "This is not cold, but it sounds too formal, which weakens the warmth. Keep the meaning, but make one sentence sound more natural and everyday.",
+    },
+    good_but_generic: {
+      "zh-Hans": "这段已经有一定温度了。现在可以再想一想：有没有一句能更明确地让对方感到你是真的理解他。",
+      "zh-Hant": "這段已經有一定溫度了。現在可以再想一想：有沒有一句能更明確地讓對方感到你是真的理解他。",
+      en: "This already has some warmth. Now think about whether one line could make the person feel even more clearly that you really understand them.",
+    },
+  },
+
+  fit_recipient: {
+    too_short: {
+      "zh-Hans": "现在这段还看不太出来你是在写给这个人。你可以加一句只有这个对象才会用到的话，让对象感更清楚。",
+      "zh-Hant": "現在這段還看不太出來你是在寫給這個人。你可以加一句只有這個對象才會用到的話，讓對象感更清楚。",
+      en: "Right now it is still hard to tell who this message is for. Add one line that would only fit this specific person.",
+    },
+    too_direct: {
+      "zh-Hans": "你有在表达关心，但现在更像一般性的建议。可以先少讲一点道理，多写一句和这个人的处境更贴近的话。",
+      "zh-Hant": "你有在表達關心，但現在更像一般性的建議。可以先少講一點道理，多寫一句和這個人的處境更貼近的話。",
+      en: "You are showing care, but it still sounds like general advice. Try giving less instruction and adding one line that fits this person’s situation more closely.",
+    },
+    too_formal: {
+      "zh-Hans": "这段结构很整齐，但对象感有点弱，所以谁看都差不多。你可以补一句更像只会对这个人说的话。",
+      "zh-Hant": "這段結構很整齊，但對象感有點弱，所以誰看都差不多。你可以補一句更像只會對這個人說的話。",
+      en: "The structure is neat, but it does not feel specific enough to this person. Add one line that sounds like something you would only say to them.",
+    },
+    good_but_generic: {
+      "zh-Hans": "这段方向是对的，只是还可以再更贴近一点。你可以问自己：如果换成另一个对象，这段是不是也一样能用？如果答案是可以，就说明还可以再更针对一点。",
+      "zh-Hant": "這段方向是對的，只是還可以再更貼近一點。你可以問自己：如果換成另一個對象，這段是不是也一樣能用？如果答案是可以，就說明還可以再更針對一點。",
+      en: "The direction is right, but it can still be more specific. Ask yourself: would this still work for a different person? If yes, then it can be made more targeted.",
+    },
+  },
+
+  less_formal: {
+    too_short: {
+      "zh-Hans": "你这段现在还不算正式，反而是内容有点少。与其担心太正式，不如先补一句更具体的话。",
+      "zh-Hant": "你這段現在還不算正式，反而是內容有點少。與其擔心太正式，不如先補一句更具體的話。",
+      en: "This is not too formal yet. The bigger issue is that it is still a bit thin. Add one more specific line first.",
+    },
+    too_direct: {
+      "zh-Hans": "这段主要问题不是正式，而是太直接。你可以先把最硬的一句变得更自然一点，读起来就不会那么像命令。",
+      "zh-Hant": "這段主要問題不是正式，而是太直接。你可以先把最硬的一句變得更自然一點，讀起來就不會那麼像命令。",
+      en: "The main issue is not formality. It is that the tone is too direct. Make the strongest sentence sound more natural, and it will feel less like an order.",
+    },
+    too_formal: {
+      "zh-Hans": "这段确实有点太正式了，像整理过头的标准答案。你不用整段改，只要把一两句换成更像你平常会说的话，效果就会明显不同。",
+      "zh-Hant": "這段確實有點太正式了，像整理過頭的標準答案。你不用整段改，只要把一兩句換成更像你平常會說的話，效果就會明顯不同。",
+      en: "This really is a bit too formal, almost like an over-polished model answer. You do not need to rewrite it all. Just change one or two sentences into something more natural for you.",
+    },
+    good_but_generic: {
+      "zh-Hans": "这段整体已经不错，但有一两句还是偏工整。你可以挑一句最长、最书面的句子，先把它改得更自然一点。",
+      "zh-Hant": "這段整體已經不錯，但有一兩句還是偏工整。你可以挑一句最長、最書面的句子，先把它改得更自然一點。",
+      en: "This is already quite good, but one or two lines still sound too polished. Pick the longest or most written-sounding sentence and make it more natural.",
+    },
+  },
+};
+
+const W3_SECOND_TURN_SUFFIX: Record<Locale, string> = {
+  "zh-Hans": "这次你可以只改最关键的一两句，不用整段重写。",
+  "zh-Hant": "這次你可以只改最關鍵的一兩句，不用整段重寫。",
+  en: "This time, try changing just one or two key lines instead of rewriting the whole message.",
+};
 
 // World 4 data
 const commuteSurvey = [
@@ -932,60 +1149,260 @@ const studentEntryText = {
   },
 } as const;
 
-function buildCreativeReplyLocalized(
-  locale: Locale,
-  recipient: W3Recipient,
-  prompt: string,
-  sourceText: string,
-  turn: number
-) {
-  if (locale === "zh-Hans") {
-    return buildCreativeReply(recipient, prompt, sourceText, turn);
+type W3AiRewriteResult = {
+  mode: "rewrite" | "scaffold";
+  rewritten: string;
+  note: string;
+};
+
+function normalizeW3Text(text: string) {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function isW3LowQualityDraft(text: string) {
+  const clean = normalizeW3Text(text);
+  const stripped = clean.replace(/[\s，。！？,.!?、"'“”‘’（）()]/g, "");
+
+  if (stripped.length < 12) return true;
+
+  // 连续重复，例如：水水水水水水、哈哈哈哈哈哈
+  if (/([\u4e00-\u9fa5A-Za-z])\1{4,}/.test(stripped)) return true;
+
+  // 字符种类太少，说明大概率是无意义重复输入
+  const uniqueChars = new Set(stripped.split(""));
+  if (stripped.length >= 10 && uniqueChars.size <= 4) return true;
+
+  // 缺少明显句子结构，也没有表达对象或感受
+  const hasFeelingWord =
+    /谢谢|希望|担心|紧张|开心|温暖|安心|理解|关心|辛苦|不安|害怕|累|thank|hope|feel|care|warm|nervous|tired/i.test(clean);
+
+  if (stripped.length < 24 && !hasFeelingWord) return true;
+
+  return false;
+}
+
+function buildW3StarterLine(locale: Locale, recipient: W3Recipient) {
+  const lines = {
+    "zh-Hans": {
+      junior: "希望你刚升上中学时，可以慢慢找到让自己安心的节奏。",
+      stress: "希望你这几天能感觉轻松一点，也知道有人在关心你。",
+      new: "希望你来到新学校后，可以慢慢找到让自己安心的人和事。",
+      elder: "谢谢您每次温柔地和我们打招呼，也希望您每天都能感受到别人的关心。",
+    },
+    "zh-Hant": {
+      junior: "希望你剛升上中學時，可以慢慢找到讓自己安心的節奏。",
+      stress: "希望你這幾天能感覺輕鬆一點，也知道有人在關心你。",
+      new: "希望你來到新學校後，可以慢慢找到讓自己安心的人和事。",
+      elder: "謝謝您每次溫柔地和我們打招呼，也希望您每天都能感受到別人的關心。",
+    },
+    en: {
+      junior: "I hope you can slowly find your own rhythm as you start secondary school.",
+      stress: "I hope these days can feel a little lighter, and that you know someone cares about you.",
+      new: "I hope you can slowly find people and moments that help you feel safe in your new school.",
+      elder: "Thank you for greeting us so kindly. I hope you can also feel cared for each day.",
+    },
+  } as const;
+
+  return lines[locale][recipient];
+}
+
+function buildW3LowQualityScaffold(locale: Locale, recipient: W3Recipient): W3AiRewriteResult {
+  const starter = buildW3StarterLine(locale, recipient);
+
+  if (locale === "en") {
+    return {
+      mode: "scaffold",
+      rewritten: "",
+      note:
+        `I still cannot clearly tell what you most want to say, so I will not rewrite the whole message yet.\n\n` +
+        `Try adding two things first:\n` +
+        `1. How do you want this person to feel after reading your card?\n` +
+        `2. Is there one sentence, feeling, or small detail you want to keep?\n\n` +
+        `You could start with this line:\n${starter}`,
+    };
   }
 
   if (locale === "zh-Hant") {
-    const openers: Record<string, string> = {
-      junior: "剛升上中學時，感到緊張其實很正常。",
-      stress: "如果你最近真的很累，也可以先讓自己停一停。",
-      new: "來到新地方時會有些不安，這很正常。",
-      elder: "謝謝您一直願意溫柔地聽我們說話。",
+    return {
+      mode: "scaffold",
+      rewritten: "",
+      note:
+        `我現在還不太看得出你最想對對方說什麼，所以先不直接幫你改寫整段。\n\n` +
+        `你可以先補這兩點：\n` +
+        `1. 你希望對方看完後有什麼感覺？\n` +
+        `2. 有沒有一句你特別想保留的話，或者一個小細節？\n\n` +
+        `你也可以先從這一句開始：\n${starter}`,
     };
-    const endings: Record<string, string> = {
-      junior: "你不用一下子把所有事情都做好，慢慢來也可以。",
-      stress: "你不是不夠好，只是已經很辛苦了。",
-      new: "你不用馬上變得很厲害，先安心下來就很好。",
-      elder: "也希望您每天都能有一點輕鬆和開心。",
-    };
-    const keepVoice = /保留我的語氣|像/.test(prompt);
-    const keepExample = /例子/.test(prompt);
-    const parts = sourceText.split(/[。！？]/).filter(Boolean);
-    const first = keepVoice && parts.length ? `${parts[0]}。` : openers[recipient] || openers.junior;
-    const middle = keepExample && parts.length
-      ? `${parts[1] ? parts[1] : parts[0]}。`
-      : "有時候，先把自己的感受說清楚，就已經很了不起。";
-    return `${first} ${middle} ${endings[recipient] || endings.junior}${turn > 1 ? " 如果你願意，也可以先由一件小事開始。" : ""}`;
   }
 
-  const openers: Record<string, string> = {
-    junior: "Feeling nervous when you first start secondary school is completely normal.",
-    stress: "If you have been really tired lately, it is okay to pause for a moment.",
-    new: "It is normal to feel unsure when you arrive somewhere new.",
-    elder: "Thank you for always listening so kindly to what we want to say.",
+  return {
+    mode: "scaffold",
+    rewritten: "",
+    note:
+      `我现在还看不太出你最想对对方说什么，所以先不直接帮你改写整段。\n\n` +
+      `你可以先补这两点：\n` +
+      `1. 你希望对方看完后有什么感觉？\n` +
+      `2. 有没有一句你特别想保留的话，或者一个小细节？\n\n` +
+      `你也可以先从这一句开始：\n${starter}`,
   };
-  const endings: Record<string, string> = {
-    junior: "You do not have to get everything right at once. It is okay to take it slowly.",
-    stress: "You are not failing. You have simply been carrying a lot.",
-    new: "You do not need to become confident straight away. It is enough to settle in first.",
-    elder: "I also hope your days can hold a little more ease and warmth.",
+}
+
+function applyW3Softening(text: string) {
+  return text
+    .replace(/你应该/g, "你可以先试试")
+    .replace(/你要/g, "你可以")
+    .replace(/不要想太多/g, "先不用一下子把所有事都想清楚")
+    .replace(/赶快/g, "慢慢")
+    .replace(/快点/g, "慢慢")
+    .replace(/必须/g, "可以先")
+    .replace(/你應該/g, "你可以先試試")
+    .replace(/你要/g, "你可以")
+    .replace(/不要想太多/g, "先不用一下子把所有事都想清楚")
+    .replace(/必須/g, "可以先");
+}
+
+function applyW3LessFormal(text: string) {
+  return text
+    .replace(/衷心希望您/g, "希望您")
+    .replace(/祝愿/g, "希望")
+    .replace(/誠摯/g, "")
+    .replace(/謹此/g, "")
+    .replace(/希望您能够/g, "希望您可以")
+    .replace(/希望您能夠/g, "希望您可以");
+}
+
+function buildW3RecipientEnding(locale: Locale, recipient: W3Recipient) {
+  const endings = {
+    "zh-Hans": {
+      junior: "你不用一下子把所有事情都做好，慢慢来也可以。",
+      stress: "你不是不够好，只是已经承担了很多。",
+      new: "你不用马上变得很会适应，先慢慢安心下来就很好。",
+      elder: "也希望您每天都能感受到别人对您的关心。",
+    },
+    "zh-Hant": {
+      junior: "你不用一下子把所有事情都做好，慢慢來也可以。",
+      stress: "你不是不夠好，只是已經承擔了很多。",
+      new: "你不用馬上變得很會適應，先慢慢安心下來就很好。",
+      elder: "也希望您每天都能感受到別人對您的關心。",
+    },
+    en: {
+      junior: "You do not need to get everything right at once. It is okay to take things step by step.",
+      stress: "You are not failing. You have simply been carrying a lot.",
+      new: "You do not have to adapt immediately. It is enough to settle in little by little.",
+      elder: "I also hope you can feel care and kindness from others each day.",
+    },
+  } as const;
+
+  return endings[locale][recipient];
+}
+
+function buildW3AiRewriteLocalized(
+  locale: Locale,
+  recipient: W3Recipient,
+  sourceText: string,
+  selectedTags: string[]
+): W3AiRewriteResult {
+  if (isW3LowQualityDraft(sourceText)) {
+    return buildW3LowQualityScaffold(locale, recipient);
+  }
+
+  const tagsText = selectedTags.join(" ");
+  const wantsKeepVoice = /保留我的语气|保留我的語氣|keep/i.test(tagsText);
+  const wantsKeepExample = /例子|example/i.test(tagsText);
+  const wantsWarmer = /温暖|溫暖|warmer/i.test(tagsText);
+  const wantsFitRecipient = /写给这个人|寫給這個人|fit/i.test(tagsText);
+  const wantsLessFormal = /不要太正式|less formal|太正式/i.test(tagsText);
+
+  let rewritten = normalizeW3Text(sourceText);
+
+  if (wantsLessFormal) {
+    rewritten = applyW3LessFormal(rewritten);
+  }
+
+  if (wantsWarmer || wantsFitRecipient) {
+    rewritten = applyW3Softening(rewritten);
+  }
+
+  const sentences = rewritten
+    .split(/[。！？.!?]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  let mainBody = rewritten;
+
+  if (sentences.length > 0) {
+    if (wantsKeepExample && sentences.length >= 2) {
+      mainBody = `${sentences[0]}。${sentences[1]}。`;
+    } else if (wantsKeepVoice && sentences.length >= 1) {
+      mainBody = `${sentences.join("。")}。`;
+    }
+  }
+
+  if (wantsFitRecipient || wantsWarmer) {
+    const ending = buildW3RecipientEnding(locale, recipient);
+    if (locale === "en") {
+      mainBody = mainBody.replace(/[。！？]$/g, "");
+      if (!/[.!?]$/.test(mainBody)) mainBody += ".";
+      mainBody = `${mainBody} ${ending}`;
+    } else {
+      if (!/[。！？]$/.test(mainBody)) mainBody += "。";
+      mainBody = `${mainBody}${ending}`;
+    }
+  }
+
+  const noteParts =
+    locale === "en"
+      ? [
+          wantsKeepVoice ? "I tried to keep your original voice" : "",
+          wantsKeepExample ? "I kept your example or personal feeling" : "",
+          wantsWarmer ? "I made the tone warmer" : "",
+          wantsFitRecipient ? "I made it sound more like it is written for this person" : "",
+          wantsLessFormal ? "I made the wording less formal" : "",
+        ].filter(Boolean)
+      : locale === "zh-Hant"
+      ? [
+          wantsKeepVoice ? "我盡量保留了你原來的語氣" : "",
+          wantsKeepExample ? "沒有刪掉你原來的例子或個人感受" : "",
+          wantsWarmer ? "把語氣調得更溫暖一點" : "",
+          wantsFitRecipient ? "讓內容更像是寫給這個對象的" : "",
+          wantsLessFormal ? "把太工整的地方改得更自然一點" : "",
+        ].filter(Boolean)
+      : [
+          wantsKeepVoice ? "我尽量保留了你原来的语气" : "",
+          wantsKeepExample ? "没有删掉你原来的例子或个人感受" : "",
+          wantsWarmer ? "把语气调得更温暖一点" : "",
+          wantsFitRecipient ? "让内容更像是写给这个对象的" : "",
+          wantsLessFormal ? "把太工整的地方改得更自然一点" : "",
+        ].filter(Boolean);
+
+  return {
+    mode: "rewrite",
+    rewritten: mainBody,
+    note:
+      noteParts.length > 0
+        ? noteParts.join(locale === "en" ? "; " : "；")
+        : locale === "en"
+        ? "I made the wording clearer while keeping the main meaning."
+        : locale === "zh-Hant"
+        ? "我在保留主要意思的基礎上，讓表達更清楚。"
+        : "我在保留主要意思的基础上，让表达更清楚。",
   };
-  const keepVoice = /keep my voice|sound like me/i.test(prompt);
-  const keepExample = /example/i.test(prompt);
-  const parts = sourceText.split(/[。.!?]/).map((s) => s.trim()).filter(Boolean);
-  const first = keepVoice && parts.length ? `${parts[0]}.` : openers[recipient] || openers.junior;
-  const middle = keepExample && parts.length
-    ? `${parts[1] ? parts[1] : parts[0]}.`
-    : "Sometimes, simply saying clearly how you feel is already something brave and meaningful.";
-  return `${first} ${middle} ${endings[recipient] || endings.junior}${turn > 1 ? " If you want, you can also begin with one small step." : ""}`;
+}
+
+function buildW3VisibleUserMessage(locale: Locale, prompt: string, selectedTags: string[]) {
+  const finalPrompt =
+    prompt.trim() ||
+    (locale === "en"
+      ? "Please help me make this card clearer."
+      : locale === "zh-Hant"
+      ? "請幫我把這張卡片改得更清楚一點。"
+      : "请帮我把这张卡片改得更清楚一点。");
+
+  if (selectedTags.length === 0) return finalPrompt;
+
+  return locale === "en"
+    ? `${finalPrompt}\nRevision goals: ${selectedTags.join(", ")}`
+    : `${finalPrompt}\n修改要求：${selectedTags.join("、")}`;
 }
 
 export default function Page() {
@@ -1143,17 +1560,17 @@ export default function Page() {
     junior: "When I first started secondary school, I was worried that I would not fit in. Even lunchtime felt awkward because I did not know who to sit with. Later I realised that finding one or two people to talk to and study with made things feel much easier. You do not need to do everything perfectly straight away.",
     stress: "If you have been feeling really tired lately, you do not have to pretend that everything is fine. Sometimes stopping to rest is more important than forcing yourself to keep going. You are not failing. You have just been carrying a lot.",
     new: "Starting somewhere new can feel unsettling. I used to worry about saying the wrong thing or not knowing who to walk with. Later I realised that meeting one or two people first made many things feel easier.",
-    elder: "Thank you for always being willing to listen to what we say about school. Sometimes just having someone quietly listen to a small part of my day already feels very warm.",
+    elder: "Thank you for always greeting us so kindly when we see you. Sometimes, just hearing you ask how our day has been already makes people feel warm and cared for. I hope you can also feel that same kindness from others every day.",
   } : locale === "zh-Hant" ? {
     junior: "我剛升上中學的時候，也很怕自己跟不上，連午飯時間都不知道該跟誰坐。後來我發現，只要先找到一兩個願意一起聊天、一起做功課的人，心裡就會安穩很多。你不用一下子把所有事情都做好，慢慢來就可以。",
     stress: "如果你最近真的很累，也不用一直假裝自己沒事。很多時候，先讓自己休息一下，比逼自己繼續撐下去更重要。你不是不夠好，只是已經很辛苦了。",
     new: "剛來到一個新地方的時候，真的會有點不安。我以前也會擔心自己說錯話、找不到人一起走。後來我發現，只要先認識一兩個願意打招呼的人，很多事情都會慢慢變得容易。",
-    elder: "謝謝您一直願意聽我們說學校裡的事。有時候我會覺得，能有人安靜地聽我說一小段日常，就已經很溫暖了。希望您每天都能有一點輕鬆和開心。",
+    elder: "謝謝您每次見到我們都會笑著打招呼。有時候，光是聽到您溫柔地問一句「今天過得怎麼樣」，就會讓人心裡暖暖的。也希望您每天都能感受到別人對您的關心。",
   } : {
     junior: "我刚上中学的时候，也很怕自己跟不上，连午饭时间都不知道该跟谁坐。后来我发现，只要先找到一两个愿意一起聊天、一起做功课的人，心里就会安稳很多。你不用一下子把所有事情都做得很好，慢慢来就可以。",
     stress: "如果你最近真的很累，也不用一直假装自己没事。很多时候，先让自己休息一下，比逼自己继续撑着更重要。你不是不够好，你只是已经很辛苦了。",
     new: "刚来到一个新地方的时候，真的会有点不安。我以前也会担心自己说错话、找不到人一起走。后来我发现，只要先认识一两个愿意打招呼的人，很多事情都会慢慢变容易。",
-    elder: "谢谢您一直愿意听我们说学校里的事。有时候我会觉得，能有人安静地听我说一小段日常，就已经很温暖了。希望您每天都能有一点轻松和开心。",
+    elder: "谢谢您每次见到我们都会笑着打招呼。有时候，光是听到您温柔地问一句“今天过得怎么样”，就会让人心里暖暖的。也希望您每天都能感受到别人对您的关心。",
   }), [locale]);
 
   const promptTagsList = useMemo(() => locale === "en" ? [
@@ -1572,28 +1989,57 @@ const currentAvailableWorld = useMemo(() => {
   }
 
   async function submitCreativePrompt() {
-    if (!w3Recipient) return;
-    const finalPrompt = w3Prompt.trim() || "请帮我把这张卡片改得更清楚一点。";
-    const turn = w3Chat.filter((m) => m.role === "ai").length + 1;
-    const aiText = buildCreativeReplyLocalized(
-      locale,
-      w3Recipient,
-      `${finalPrompt} ${w3PromptTags.join(" ")}`,
-      w3Draft,
-      turn
-    );
-    setW3Chat((prev) => [...prev, { role: "user", text: finalPrompt }, { role: "ai", text: aiText }]);
-    setW3FinalText(aiText);
-    setW3Prompt("");
-    if (sessionId) {
-      try {
-        await postJson("/api/chat/log", { sessionId, worldId: "w3", turnNo: turn, role: "user", content: finalPrompt });
-        await postJson("/api/chat/log", { sessionId, worldId: "w3", turnNo: turn, role: "ai", content: aiText });
-      } catch (error) {
-        console.error("chat log failed", error);
-      }
+  if (!w3Recipient) return;
+
+  const finalPrompt =
+    w3Prompt.trim() ||
+    (locale === "en"
+      ? "Please help me make this card clearer."
+      : locale === "zh-Hant"
+      ? "請幫我把這張卡片改得更清楚一點。"
+      : "请帮我把这张卡片改得更清楚一点。");
+
+  const turn = w3Chat.filter((m) => m.role === "ai").length + 1;
+
+  const userText = buildW3VisibleUserMessage(locale, finalPrompt, w3PromptTags);
+  const result = buildW3AiRewriteLocalized(locale, w3Recipient, w3Draft, w3PromptTags);
+
+  const aiText =
+    result.mode === "scaffold"
+      ? result.note
+      : locale === "en"
+      ? `Revised version:\n${result.rewritten}\n\nWhat I changed:\n${result.note}`
+      : `改写后的版本：\n${result.rewritten}\n\n我做了什么调整：\n${result.note}`;
+
+  setW3Chat((prev) => [...prev, { role: "user", text: userText }, { role: "ai", text: aiText }]);
+
+  if (result.mode === "rewrite") {
+    setW3FinalText(result.rewritten);
+  }
+
+  setW3Prompt("");
+
+  if (sessionId) {
+    try {
+      await postJson("/api/chat/log", {
+        sessionId,
+        worldId: "w3",
+        turnNo: turn,
+        role: "user",
+        content: userText,
+      });
+      await postJson("/api/chat/log", {
+        sessionId,
+        worldId: "w3",
+        turnNo: turn,
+        role: "ai",
+        content: aiText,
+      });
+    } catch (error) {
+      console.error("chat log failed", error);
     }
   }
+}
 
   const world1Cards = learningCardsByModeData[w1Mode];
   const world5Images = w5Problem ? trainingImagesByCaseData[w5Problem] : [];
@@ -2210,7 +2656,26 @@ const currentAvailableWorld = useMemo(() => {
                         title={item.title}
                         note={item.note}
                         selected={w3Recipient === item.id}
-                        onClick={() => setW3Recipient(item.id)}
+                        onClick={() => {
+  const existingIsSample =
+    w3Draft === draftSamplesData.junior ||
+    w3Draft === draftSamplesData.stress ||
+    w3Draft === draftSamplesData.new ||
+    w3Draft === draftSamplesData.elder;
+
+  setW3Recipient(item.id);
+
+  // 不再自动放入示例初稿。
+  // 只有当当前草稿本来就是某个示例时，切换对象后才清空，避免旧对象样例残留。
+  if (existingIsSample) {
+    setW3Draft("");
+  }
+
+  setW3Prompt("");
+  setW3PromptTags([]);
+  setW3Chat([]);
+  setW3FinalText("");
+}}
                       />
                     ))}
                   </div>
@@ -2281,6 +2746,27 @@ const currentAvailableWorld = useMemo(() => {
                           </Button>
                         )}
                       </div>
+                      <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
+  <div className="mb-2 font-medium">
+    {locale === "en" ? "This time I want AI to focus on:" : "这次我希望 AI 重点做到："}
+  </div>
+  {w3PromptTags.length > 0 ? (
+    <div className="flex flex-wrap gap-2">
+      {w3PromptTags.map((tag) => (
+        <span
+          key={tag}
+          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700"
+        >
+          {tag}
+        </span>
+      ))}
+    </div>
+  ) : (
+    <div className="text-slate-500">
+      {locale === "en" ? "You can click one or more tags above." : "你可以先点选上面的一个或多个修改要求。"}
+    </div>
+  )}
+</div>
                     </div>
                   </Section>
 

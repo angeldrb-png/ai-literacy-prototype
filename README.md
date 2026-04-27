@@ -1,47 +1,27 @@
-# AI校园任务站｜第五批补丁代码
-## 教师端登录保护 + 教师端/登录页三语 + 正式结果页
+# AI校园任务站｜第六批超小补丁包
 
-这批补丁只修教师端与登录页，不改学生端现有设计与功能。
+这次只改两处：
 
-## 新增/替换文件
-- `lib/teacher-auth.ts`
-- `lib/teacher-i18n.ts`
-- `app/api/teacher/login/route.ts`
-- `app/api/teacher/logout/route.ts`
-- `app/api/teacher/overview/route.ts`
-- `app/api/teacher/session/[sessionId]/route.ts`
-- `app/teacher/login/page.tsx`
-- `app/teacher/page.tsx`
-- `app/teacher/session/[sessionId]/page.tsx`
+1. 教师端语言切换按钮由 `zh-Hans / zh-Hant / en` 改成：
+   - 简
+   - 繁
+   - EN
+
+2. 学生端开始前资料页：
+   - 增加语言切换按钮（简 / 繁 / EN）
+   - 把引导文案改成适合初中生阅读的表达
+   - 不改任务地图和五个世界页面
+
+## 本补丁包包含
 - `components/teacher/TeacherLanguageSwitch.tsx`
-- `components/teacher/useTeacherLocale.ts`
-- `components/teacher/TeacherLoginClient.tsx`
-- `components/teacher/TeacherOverviewClient.tsx`
-- `components/teacher/TeacherSessionDetailClient.tsx`
+- `patch_notes/student-form-patch.md`
 
-## 环境变量
-请在本地 `.env` 和 Vercel 中新增：
+## 使用方法
+### 第一步
+直接用包里的 `components/teacher/TeacherLanguageSwitch.tsx` 覆盖项目同名文件。
 
-- `TEACHER_LOGIN_USERNAME`
-- `TEACHER_LOGIN_PASSWORD`
+### 第二步
+打开你项目里的 `app/page.tsx`，按照 `patch_notes/student-form-patch.md` 里的说明，
+只修改“学生开始前资料页”相关代码。
 
-例如：
-```env
-TEACHER_LOGIN_USERNAME=teacher
-TEACHER_LOGIN_PASSWORD=ChangeThisPassword123
-```
-
-## 本地运行
-```bash
-npm run dev
-```
-
-## 登录路径
-- 教师登录：`/teacher/login`
-- 教师总览：`/teacher`
-- 单个学生详情：`/teacher/session/[sessionId]`
-
-## 说明
-- 未登录访问 `/teacher` 会自动跳转到 `/teacher/login`
-- 教师 API 也会做 cookie 校验
-- 学生端 `app/page.tsx` 不在这批补丁中，不会被覆盖
+这次之所以没有直接提供 `app/page.tsx`，是为了避免再次覆盖你当前已经确认没问题的学生端页面。
