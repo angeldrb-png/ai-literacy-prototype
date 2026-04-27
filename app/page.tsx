@@ -1761,7 +1761,7 @@ export default function Page() {
         ...payload,
       });
     } catch (error) {
-      console.error("trackEvent failed", error);
+      console.warn("trackEvent failed", error);
     }
   }
 
