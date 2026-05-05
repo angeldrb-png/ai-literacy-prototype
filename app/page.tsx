@@ -8428,7 +8428,7 @@ description={
     onClick={() => void finishWorld("w5")}
   >
     {locale === "en"
-      ? "Submit system card"
+      ? "Submit reminder card"
       : locale === "zh-Hant"
       ? "提交提醒卡"
       : "提交提醒卡"}
