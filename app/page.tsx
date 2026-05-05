@@ -8188,17 +8188,17 @@ description={
                 <Section
                 title={
   locale === "en"
-    ? "Check the system card"
+    ? "Check the reminder card"
     : locale === "zh-Hant"
-    ? "檢查系統卡"
-    : "检查系统卡"
+    ? "檢查提醒卡"
+    : "检查提醒卡"
 }  
                 description={
   locale === "en"
     ? "The card below is drafted from your previous choices. Read it, revise anything unclear, and then submit."
     : locale === "zh-Hant"
-    ? "下面的系統卡會根據你前面的選擇先整理成草稿。請讀一讀，修改不清楚的地方，再提交。"
-    : "下面的系统卡会根据你前面的选择先整理成草稿。请读一读，修改不清楚的地方，再提交。"
+    ? "下面的提醒卡會根據你前面的選擇先整理成草稿。請讀一讀，修改不清楚的地方，再提交。"
+    : "下面的提醒卡会根据你前面的选择先整理成草稿。请读一读，修改不清楚的地方，再提交。"
 }
                 >
                   <div className="mb-5 rounded-3xl border border-emerald-100 bg-emerald-50 p-4">
@@ -8430,8 +8430,8 @@ description={
     {locale === "en"
       ? "Submit system card"
       : locale === "zh-Hant"
-      ? "提交系統卡"
-      : "提交系统卡"}
+      ? "提交提醒卡"
+      : "提交提醒卡"}
   </Button>
                   </div>
                 </Section>
