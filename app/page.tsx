@@ -1396,46 +1396,63 @@ function getLocalizedWorldMeta(locale: Locale) {
 
 const studentEntryText = {
   "zh-Hans": {
-    title: "开始前先填一下资料",
-    note: "填好就可以开始任务。老师会用这些资料对应你的测试结果。",
+    title: "欢迎来到 AI 任务地图",
+    note: "接下来你会完成 5 个和 AI 有关的小任务。请按自己的想法判断和选择，不用担心答得快不快。",
+    introTitle: "你会做什么？",
+    introPoints: [
+      "你会试用 AI 推荐、检查 AI 写的信息，也会和 AI 一起完成一个小作品。",
+      "有些任务需要你选择、拖动卡片，或写一点自己的想法。",
+      "这不是背书题，也不是比谁答得最快。我们想了解你怎样理解和使用 AI。",
+    ],
     name: "姓名 *",
     code: "学号 *",
     className: "班级 *",
     school: "学校",
     grade: "年级",
-    start: "开始测试",
+    start: "开始任务",
     starting: "正在进入…",
     back: "返回入口页",
     required: "带 * 的项目需要填写",
   },
   "zh-Hant": {
-    title: "開始前先填一下資料",
-    note: "填好後就可以開始任務。老師會用這些資料對應你的測試結果。",
+    title: "歡迎來到 AI 任務地圖",
+    note: "接下來你會完成 5 個和 AI 有關的小任務。請按自己的想法判斷和選擇，不用擔心答得快不快。",
+    introTitle: "你會做甚麼？",
+    introPoints: [
+      "你會試用 AI 推薦、檢查 AI 寫的資訊，也會和 AI 一起完成一個小作品。",
+      "有些任務需要你選擇、拖動卡片，或寫一點自己的想法。",
+      "這不是背書題，也不是比誰答得最快。我們想了解你怎樣理解和使用 AI。",
+    ],
     name: "姓名 *",
     code: "學號 *",
     className: "班別 *",
     school: "學校",
     grade: "年級",
-    start: "開始測試",
+    start: "開始任務",
     starting: "正在進入…",
     back: "返回入口頁",
     required: "有 * 的項目需要填寫",
   },
   en: {
-    title: "Fill in a few details before you start",
-    note: "After that, you can start the missions. Your teacher will use these details to match your results.",
+    title: "Welcome to the AI Mission Map",
+    note: "You will complete five short missions about AI. Follow your own judgement and take your time.",
+    introTitle: "What will you do?",
+    introPoints: [
+      "You will try AI recommendations, check AI-written information, and create a small piece with AI.",
+      "Some missions ask you to choose, drag cards, or write a short answer.",
+      "This is not a memory test or a speed test. We want to see how you understand and use AI.",
+    ],
     name: "Name *",
     code: "Student ID *",
     className: "Class *",
     school: "School",
     grade: "Grade",
-    start: "Start",
+    start: "Start missions",
     starting: "Entering…",
     back: "Back",
     required: "Fields marked with * are required",
   },
 } as const;
-
 type W3AiRewriteResult = {
   mode: "rewrite" | "scaffold";
   rewritten: string;
@@ -5626,6 +5643,28 @@ return (
                       </div>
                       <Pill tone="outline">{locale === "en" ? "Open two cards to continue" : locale === "zh-Hant" ? "先打開兩張推薦卡，再繼續" : "点开两张推荐卡再继续"}</Pill>
                     </div>
+                    <div className="mb-6 rounded-3xl border border-slate-200 bg-slate-50 p-4 md:p-5">
+  <div className="flex gap-3">
+    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
+      <Sparkles className="h-5 w-5" />
+    </div>
+
+    <div>
+      <h3 className="text-base font-semibold text-slate-900">
+        {studentEntryText[locale].introTitle}
+      </h3>
+
+      <ul className="mt-3 space-y-2">
+        {studentEntryText[locale].introPoints.map((point) => (
+          <li key={point} className="flex gap-2 text-sm leading-6 text-slate-600">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            <span>{point}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</div>
                     <div className="grid gap-4 md:grid-cols-2">
                       {learningCardsByMode.personal.map((card) => {
                         const opened = w1OpenedCards.includes(card.id);
@@ -8464,92 +8503,532 @@ description={
         </AnimatePresence>
 
         {!sessionId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
-            <div className="w-full max-w-2xl rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl md:p-8">
-              <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-  <div>
-    <div className="text-sm font-medium text-slate-500">
-      {locale === "en"
-        ? "Before you start"
-        : locale === "zh-Hant"
-        ? "開始前"
-        : "开始前"}
-    </div>
-
-    <h2 className="mt-1 text-2xl font-semibold text-slate-900">
-      {studentEntryText[locale].title}
-    </h2>
-
-    <p className="mt-2 text-sm leading-7 text-slate-600">
-      {studentEntryText[locale].note}
-    </p>
-  </div>
-
-  <div className="flex flex-wrap items-center gap-2">
-    <LanguageSwitcher locale={locale} onChange={changeLocale} />
-
-    <Link
-      href="/teacher"
-      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 2147483647,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "24px",
+      backgroundColor: "rgba(15, 23, 42, 0.76)",
+      backdropFilter: "blur(8px)",
+      boxSizing: "border-box",
+    }}
+  >
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        width: "min(680px, calc(100vw - 48px))",
+        maxHeight: "88vh",
+        overflow: "hidden",
+        borderRadius: "30px",
+        backgroundColor: "#ffffff",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 28px 90px rgba(15, 23, 42, 0.38)",
+        boxSizing: "border-box",
+      }}
     >
-      {locale === "en"
-        ? "Teacher page"
-        : locale === "zh-Hant"
-        ? "進入教師端"
-        : "进入教师端"}
-    </Link>
-  </div>
-</div>
+      <div
+        style={{
+          maxHeight: "88vh",
+          overflowY: "auto",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: "24px 28px 22px",
+            borderBottom: "1px solid #e5e7eb",
+            background:
+              "linear-gradient(135deg, #eef2ff 0%, #ffffff 52%, #ecfeff 100%)",
+            boxSizing: "border-box",
+          }}
+        >
+          {/* Top toolbar */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "14px",
+              padding: "8px 10px",
+              marginBottom: "18px",
+              borderRadius: "18px",
+              backgroundColor: "rgba(255, 255, 255, 0.78)",
+              boxShadow: "0 4px 14px rgba(15, 23, 42, 0.08)",
+              boxSizing: "border-box",
+            }}
+          >
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "6px 10px",
+                borderRadius: "999px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#475569",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Sparkles className="h-4 w-4 text-indigo-500" />
+              {locale === "en"
+                ? "Before you start"
+                : locale === "zh-Hant"
+                ? "開始前"
+                : "开始前"}
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="block">
-                  <div className="mb-2 text-sm font-medium text-slate-700">
-  {studentEntryText[locale].name}
-</div>
-<input value={identity.studentName} onChange={(e) => setIdentity((prev) => ({ ...prev, studentName: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400" />
-                </label>
-                <label className="block">
-                  <div className="mb-2 text-sm font-medium text-slate-700">
-  {studentEntryText[locale].code}
-</div>
-                  <input value={identity.studentCode} onChange={(e) => setIdentity((prev) => ({ ...prev, studentCode: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400" />
-                </label>
-                <label className="block">
-                  <div className="mb-2 text-sm font-medium text-slate-700">
-  {studentEntryText[locale].className}
-</div>
-                  <input value={identity.className} onChange={(e) => setIdentity((prev) => ({ ...prev, className: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400" />
-                </label>
-                <label className="block">
-                  <div className="mb-2 text-sm font-medium text-slate-700">
-  {studentEntryText[locale].school}
-</div>
-                  <input value={identity.schoolName} onChange={(e) => setIdentity((prev) => ({ ...prev, schoolName: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400" />
-                </label>
-                <label className="block md:col-span-2">
-                  <div className="mb-2 text-sm font-medium text-slate-700">
-  {studentEntryText[locale].grade}
-</div>
-                  <input value={identity.gradeLevel} onChange={(e) => setIdentity((prev) => ({ ...prev, gradeLevel: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-slate-400" />
-                </label>
-              </div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                flexShrink: 0,
+              }}
+            >
+              <LanguageSwitcher locale={locale} onChange={changeLocale} />
 
-              {identityError ? <div className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{identityError}</div> : null}
-
-              <div className="mt-6 flex items-center justify-end gap-3">
-                <button
-                  onClick={startStudentSession}
-                  disabled={startingSession}
-                  className="rounded-full bg-slate-900 px-5 py-3 text-sm font-medium text-white disabled:opacity-60"
-                >
-                  {startingSession
-  ? studentEntryText[locale].starting
-  : studentEntryText[locale].start}
-                  </button>
-              </div>
+              <Link
+                href="/teacher"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "9px 16px",
+                  borderRadius: "999px",
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#ffffff",
+                  boxShadow: "0 3px 10px rgba(15, 23, 42, 0.10)",
+                  color: "#334155",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {locale === "en"
+                  ? "Teacher Portal"
+                  : locale === "zh-Hant"
+                  ? "進入教師端"
+                  : "进入教师端"}
+              </Link>
             </div>
           </div>
-        )}
+
+          {/* Title */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "14px",
+            }}
+          >
+            <div
+              style={{
+                width: "42px",
+                height: "42px",
+                borderRadius: "18px",
+                backgroundColor: "#0f172a",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                boxShadow: "0 8px 18px rgba(15, 23, 42, 0.18)",
+              }}
+            >
+              <Map className="h-5 w-5" />
+            </div>
+
+            <div style={{ minWidth: 0 }}>
+              <h2
+                style={{
+                  margin: 0,
+                  color: "#0f172a",
+                  fontSize: "28px",
+                  lineHeight: 1.2,
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {studentEntryText[locale].title}
+              </h2>
+
+              <p
+                style={{
+                  margin: "10px 0 0",
+                  color: "#475569",
+                  fontSize: "15px",
+                  lineHeight: 1.8,
+                }}
+              >
+                {studentEntryText[locale].note}
+              </p>
+            </div>
+          </div>
+
+          {/* Intro card */}
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "16px 18px",
+              borderRadius: "22px",
+              border: "1px solid #e2e8f0",
+              backgroundColor: "rgba(255, 255, 255, 0.92)",
+              boxShadow: "0 6px 18px rgba(15, 23, 42, 0.08)",
+              boxSizing: "border-box",
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                color: "#0f172a",
+                fontSize: "15px",
+                fontWeight: 700,
+              }}
+            >
+              {studentEntryText[locale].introTitle}
+            </h3>
+
+            <div style={{ marginTop: "12px", display: "grid", gap: "8px" }}>
+              {studentEntryText[locale].introPoints.map((point) => (
+                <div
+                  key={point}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                    color: "#475569",
+                    fontSize: "14px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: "22px",
+                      height: "22px",
+                      borderRadius: "999px",
+                      backgroundColor: "#d1fae5",
+                      color: "#059669",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "13px",
+                      fontWeight: 800,
+                      flexShrink: 0,
+                      marginTop: "1px",
+                    }}
+                  >
+                    ✓
+                  </span>
+                  <span>{point}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div
+          style={{
+            padding: "20px 28px 24px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div style={{ marginBottom: "16px" }}>
+            <h3
+              style={{
+                margin: 0,
+                color: "#0f172a",
+                fontSize: "19px",
+                lineHeight: 1.3,
+                fontWeight: 700,
+              }}
+            >
+              {locale === "en"
+                ? "Your information"
+                : locale === "zh-Hant"
+                ? "你的資料"
+                : "你的信息"}
+            </h3>
+
+            <p
+              style={{
+                margin: "6px 0 0",
+                color: "#64748b",
+                fontSize: "13px",
+                lineHeight: 1.5,
+              }}
+            >
+              {studentEntryText[locale].required}
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              columnGap: "16px",
+              rowGap: "14px",
+              boxSizing: "border-box",
+            }}
+          >
+            <label style={{ display: "block", minWidth: 0 }}>
+              <div
+                style={{
+                  marginBottom: "6px",
+                  color: "#334155",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                }}
+              >
+                {studentEntryText[locale].name}
+              </div>
+              <input
+                value={identity.studentName}
+                onChange={(e) =>
+                  setIdentity((prev) => ({
+                    ...prev,
+                    studentName: e.target.value,
+                  }))
+                }
+                style={{
+                  width: "100%",
+                  height: "42px",
+                  borderRadius: "16px",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                  padding: "0 14px",
+                  color: "#0f172a",
+                  fontSize: "14px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </label>
+
+            <label style={{ display: "block", minWidth: 0 }}>
+              <div
+                style={{
+                  marginBottom: "6px",
+                  color: "#334155",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                }}
+              >
+                {studentEntryText[locale].code}
+              </div>
+              <input
+                value={identity.studentCode}
+                onChange={(e) =>
+                  setIdentity((prev) => ({
+                    ...prev,
+                    studentCode: e.target.value,
+                  }))
+                }
+                style={{
+                  width: "100%",
+                  height: "42px",
+                  borderRadius: "16px",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                  padding: "0 14px",
+                  color: "#0f172a",
+                  fontSize: "14px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </label>
+
+            <label style={{ display: "block", minWidth: 0 }}>
+              <div
+                style={{
+                  marginBottom: "6px",
+                  color: "#334155",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                }}
+              >
+                {studentEntryText[locale].className}
+              </div>
+              <input
+                value={identity.className}
+                onChange={(e) =>
+                  setIdentity((prev) => ({
+                    ...prev,
+                    className: e.target.value,
+                  }))
+                }
+                style={{
+                  width: "100%",
+                  height: "42px",
+                  borderRadius: "16px",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                  padding: "0 14px",
+                  color: "#0f172a",
+                  fontSize: "14px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </label>
+
+            <label style={{ display: "block", minWidth: 0 }}>
+              <div
+                style={{
+                  marginBottom: "6px",
+                  color: "#334155",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                }}
+              >
+                {studentEntryText[locale].grade}
+              </div>
+              <input
+                value={identity.gradeLevel}
+                onChange={(e) =>
+                  setIdentity((prev) => ({
+                    ...prev,
+                    gradeLevel: e.target.value,
+                  }))
+                }
+                style={{
+                  width: "100%",
+                  height: "42px",
+                  borderRadius: "16px",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                  padding: "0 14px",
+                  color: "#0f172a",
+                  fontSize: "14px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </label>
+
+            <label
+              style={{
+                display: "block",
+                minWidth: 0,
+                gridColumn: "1 / -1",
+              }}
+            >
+              <div
+                style={{
+                  marginBottom: "6px",
+                  color: "#334155",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                }}
+              >
+                {studentEntryText[locale].school}
+              </div>
+              <input
+                value={identity.schoolName}
+                onChange={(e) =>
+                  setIdentity((prev) => ({
+                    ...prev,
+                    schoolName: e.target.value,
+                  }))
+                }
+                style={{
+                  width: "100%",
+                  height: "42px",
+                  borderRadius: "16px",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                  padding: "0 14px",
+                  color: "#0f172a",
+                  fontSize: "14px",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </label>
+          </div>
+
+          {identityError ? (
+            <div
+              style={{
+                marginTop: "14px",
+                borderRadius: "16px",
+                border: "1px solid #fecdd3",
+                backgroundColor: "#fff1f2",
+                padding: "10px 14px",
+                color: "#be123c",
+                fontSize: "14px",
+                lineHeight: 1.6,
+              }}
+            >
+              {identityError}
+            </div>
+          ) : null}
+
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "14px 16px",
+              borderRadius: "22px",
+              backgroundColor: "#f8fafc",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              boxSizing: "border-box",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                color: "#64748b",
+                fontSize: "13px",
+                lineHeight: 1.5,
+              }}
+            >
+              {locale === "en"
+                ? "Fill in the required fields, then start the missions."
+                : locale === "zh-Hant"
+                ? "填好必要資料後，就可以開始任務。"
+                : "填好必要信息后，就可以开始任务。"}
+            </p>
+
+            <button
+              onClick={startStudentSession}
+              disabled={startingSession}
+              style={{
+                minWidth: "128px",
+                height: "44px",
+                borderRadius: "999px",
+                border: "none",
+                backgroundColor: "#0f172a",
+                color: "#ffffff",
+                fontSize: "14px",
+                fontWeight: 700,
+                cursor: startingSession ? "not-allowed" : "pointer",
+                opacity: startingSession ? 0.6 : 1,
+                boxShadow: "0 10px 22px rgba(15, 23, 42, 0.20)",
+                flexShrink: 0,
+              }}
+            >
+              {startingSession
+                ? studentEntryText[locale].starting
+                : studentEntryText[locale].start}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
