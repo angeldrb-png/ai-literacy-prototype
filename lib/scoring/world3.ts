@@ -30,8 +30,11 @@ const C2_STRONG_ELEMENTS = [
 
 const SAFE_ASSETS = [
   "own_sentence",
+  "ai_background_image",
   "ai_generated_background",
+  "free_source_icon",
   "free_icon",
+  "ai_person_image",
   "school_owned_material",
   "simple_shape_or_emoji",
 ];
@@ -48,6 +51,7 @@ const DISCLOSURE_OK = [
   "state_ai_generated_visual",
   "credit_free_icon",
   "ask_permission_and_credit",
+  "not_needed_all_own_or_ai",
 ];
 
 const C5_ACCURATE_IDS = [

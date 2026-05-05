@@ -70,7 +70,11 @@ const E4_MEANINGFUL_STAKEHOLDERS = [
   "students_with_similar_items",
   "canteen_users",
 ];
-
+const E4_VALID_UNFAIR_OUTCOMES = [
+  "wrong_bin_guidance",
+  "extra_work_for_cleaning_staff",
+  "recycling_record_inaccurate",
+];
 const E4_VALID_CAUSE_LINKS = [
   "training_data_lacks_lighting_variation",
   "training_data_lacks_shape_variation",
@@ -210,89 +214,110 @@ if (
     })
   );
 }
-  // D2: compare fixed-rule systems with data-trained predictive systems.
-  const systemComparisonChoiceByCase = obj(step3.systemComparisonChoiceByCase ?? step2.systemComparisonChoiceByCase ?? step4.systemComparisonChoiceByCase);
-  const systemComparisonReasonTags = arr(step3.systemComparisonReasonTags ?? step2.systemComparisonReasonTags ?? step4.systemComparisonReasonTags);
-  if (Object.keys(systemComparisonChoiceByCase).length || systemComparisonReasonTags.length) {
-    const choices = Object.values(systemComparisonChoiceByCase).map((v) => String(v));
-    const distinguishesSystems = choices.some((v) => ["rulebot", "databot", "both_need_human_check"].includes(v));
-    const hasDataReason = systemComparisonReasonTags.some((id) =>
-      ["data_model_needs_representative_examples", "data_model_can_generalise_if_training_varied"].includes(id)
-    );
-    const hasRuleReason = systemComparisonReasonTags.includes("rule_is_clear_but_inflexible");
-    const hasTradeOff = hasDataReason && hasRuleReason;
-    const weakOrWrong = systemComparisonReasonTags.some((id) => ["faster_is_better", "newer_is_better", "looks_smarter"].includes(id));
+  // D2: choose a suitable next-step strategy for similar image-classification errors.
+const systemComparisonChoiceByCase = obj(
+  step3.systemComparisonChoiceByCase ??
+    step2.systemComparisonChoiceByCase ??
+    step4.systemComparisonChoiceByCase
+);
 
-    let score = 0;
-    if (distinguishesSystems) score = 1;
-    if ((hasDataReason || hasRuleReason) && !weakOrWrong) score = 2;
-    if (hasTradeOff && systemComparisonReasonTags.some((id) => D2_STRONG_REASON_TAGS.includes(id))) score = 3;
+const systemComparisonReasonTags = arr(
+  step3.systemComparisonReasonTags ??
+    step2.systemComparisonReasonTags ??
+    step4.systemComparisonReasonTags
+);
 
-    scores.push(
-      makeScore({
-        worldId: "w5",
-        competenceId: "D2",
-        domainId: "designing",
-        score,
-        scoreId: "W5-R2A",
-        scoringSource: "auto_keyed",
-        evidenceStrength: "strong",
-        coverageLevel: "primary",
-        evidence: { systemComparisonChoiceByCase, systemComparisonReasonTags, distinguishesSystems, hasDataReason, hasRuleReason, hasTradeOff, weakOrWrong },
-        rationale:
-          "Scores D2 directly by comparing fixed-rule and data-trained systems, including their flexibility, interpretability, dependence on representative data, and need for human checking.",
-      })
-    );
-  } else if (cause) {
-    const expected = CASE_CAUSE_KEY[caseId] ?? [];
-    const exact = expected.includes(cause);
-    const broad = ["data", "similar", "rule", "training_data_lacks_lighting_variation", "training_data_lacks_shape_variation", "visual_features_too_similar", "rule_boundary_unclear"].includes(cause);
-    let score = 0;
-    if (broad) score = 1;
-    if (exact) score = 2;
-    if (cause === "speed") score = 0;
+if (Object.keys(systemComparisonChoiceByCase).length || systemComparisonReasonTags.length) {
+  const strategy = str(
+    systemComparisonChoiceByCase.crushed_paper_box ??
+      systemComparisonChoiceByCase.crushed ??
+      Object.values(systemComparisonChoiceByCase)[0]
+  );
 
-    scores.push(
-      makeScore({
-        worldId: "w5",
-        competenceId: "D2",
-        domainId: "designing",
-        score,
-        scoreId: "W5-R2A-legacy",
-        scoringSource: "auto_indicator",
-        evidenceStrength: "limited",
-        coverageLevel: "limited",
-        evidence: { caseId, cause, expected, exact, broad },
-        rationale:
-          "Legacy limited D2 evidence: the student connects a failure to a data/rule/feature limitation, but did not complete the RuleBot vs DataBot comparison.",
-      })
-    );
-  }
+  let score = 0;
+  if (strategy === "speed_only") score = 0;
+  else if (strategy === "rulebot") score = 1;
+  else if (strategy === "both_need_human_check") score = 2;
+  else if (strategy === "databot") score = 3;
 
+  const weakOrWrong = systemComparisonReasonTags.some((id) =>
+    ["faster_is_better", "newer_is_better", "looks_smarter"].includes(id)
+  );
+
+  if (weakOrWrong && score > 1) score = Math.max(1, score - 1);
+
+  scores.push(
+    makeScore({
+      worldId: "w5",
+      competenceId: "D2",
+      domainId: "designing",
+      score,
+      scoreId: "W5-R2A",
+      scoringSource: "auto_keyed",
+      evidenceStrength: "strong",
+      coverageLevel: "primary",
+      evidence: {
+        strategy,
+        systemComparisonChoiceByCase,
+        systemComparisonReasonTags,
+        weakOrWrong,
+      },
+      rationale:
+        "Scores whether the student chooses a suitable next-step strategy for recurring image-classification errors. Adding more representative examples is the strongest response for the crushed-box case; human checking is responsible but does not directly improve the model.",
+    })
+  );
+}
   // D3: data representation.
-  const selectedImages = arr(step4.selectedTrainingImageIds ?? step4.selectedTrainingImages ?? step3.selectedTrainingImageIds ?? step3.selectedTrainingImages);
-  if (selectedImages.length) {
-    const useful = selectedImages.filter((id) => isGoodImageForCase(caseId, id));
-    const bad = selectedImages.filter((id) => !isGoodImageForCase(caseId, id));
-    let score = 0;
-    if (useful.length === 1) score = bad.length ? 1 : 2;
-    if (useful.length >= 2) score = bad.length ? 2 : 3;
+const selectedTrainingImageItems = Array.isArray(step4.selectedTrainingImageItems)
+  ? step4.selectedTrainingImageItems
+  : [];
 
-    scores.push(
-      makeScore({
-        worldId: "w5",
-        competenceId: "D3",
-        domainId: "designing",
-        score,
-        scoreId: "W5-R3",
-        scoringSource: "auto_keyed",
-        evidenceStrength: "strong",
-        evidence: { caseId, selectedImages, useful, bad },
-        rationale:
-          "Scores whether selected training images improve representation for the chosen failure case. Quantity alone is not scored.",
-      })
-    );
-  }
+const selectedImages = arr(
+  step4.selectedTrainingImageIds ??
+    step4.selectedTrainingImages ??
+    step3.selectedTrainingImageIds ??
+    step3.selectedTrainingImages
+);
+
+if (selectedImages.length || selectedTrainingImageItems.length) {
+  const useful = selectedTrainingImageItems.length
+    ? selectedTrainingImageItems
+        .filter((item: any) => item?.good === true)
+        .map((item: any) => String(item.id))
+    : selectedImages.filter((id) => isGoodImageForCase(caseId, id));
+
+  const bad = selectedTrainingImageItems.length
+    ? selectedTrainingImageItems
+        .filter((item: any) => item?.good === false)
+        .map((item: any) => String(item.id))
+    : selectedImages.filter((id) => !isGoodImageForCase(caseId, id));
+
+  let score = 0;
+  if (useful.length === 1) score = bad.length ? 1 : 2;
+  if (useful.length >= 2) score = bad.length ? 2 : 3;
+
+  scores.push(
+    makeScore({
+      worldId: "w5",
+      competenceId: "D3",
+      domainId: "designing",
+      score,
+      scoreId: "W5-R3",
+      scoringSource: "auto_keyed",
+      evidenceStrength: "strong",
+      coverageLevel: "primary",
+      evidence: {
+        caseId,
+        selectedImages,
+        selectedTrainingImageItems,
+        useful,
+        bad,
+      },
+      rationale:
+        "Scores whether selected training images improve representation for the chosen failure case. The current version uses the saved good/distractor flag from the student-side image pool.",
+    })
+  );
+}
 
     const reminders = arr(
     step6.selectedReminderIds ??
@@ -507,18 +532,21 @@ if (
   if (affected.length || unfairOutcomeIds.length || biasCauseLinkIds.length || biasMitigationIds.length) {
     const meaningfulStakeholders = affected.filter((id) => E4_MEANINGFUL_STAKEHOLDERS.includes(id));
     const validCauses = biasCauseLinkIds.filter((id) => E4_VALID_CAUSE_LINKS.includes(id));
+    const validUnfairOutcomes = unfairOutcomeIds.filter((id) =>
+  E4_VALID_UNFAIR_OUTCOMES.includes(id)
+);
     const validMitigations = biasMitigationIds.filter((id) => E4_VALID_MITIGATIONS.includes(id));
     const saysNoOne = affected.includes("no_one");
 
     let score = 0;
     if (saysNoOne && meaningfulStakeholders.length === 0) score = 0;
     else if (meaningfulStakeholders.length >= 1) score = 1;
-    if (meaningfulStakeholders.length >= 1 && unfairOutcomeIds.length >= 1 && validCauses.length >= 1) {
+    if (meaningfulStakeholders.length >= 1 && validUnfairOutcomes.length >= 1 && validCauses.length >= 1) {
       score = 2;
     }
     if (
       meaningfulStakeholders.length >= 1 &&
-      unfairOutcomeIds.length >= 1 &&
+      validUnfairOutcomes.length >= 1 &&
       validCauses.length >= 1 &&
       validMitigations.length >= 1
     ) {
@@ -534,7 +562,17 @@ if (
         scoringSource: "auto_keyed",
         evidenceStrength: "strong",
         coverageLevel: "primary",
-        evidence: { affected, meaningfulStakeholders, unfairOutcomeIds, biasCauseLinkIds, validCauses, biasMitigationIds, validMitigations, saysNoOne },
+        evidence: {
+  affected,
+  meaningfulStakeholders,
+  unfairOutcomeIds,
+  validUnfairOutcomes,
+  biasCauseLinkIds,
+  validCauses,
+  biasMitigationIds,
+  validMitigations,
+  saysNoOne,
+},
         rationale:
           "Scores E4 as an unfair-impact judgement: the student links who may be affected, what unfair result may occur, the data/rule/design cause, and a mitigation strategy.",
       })

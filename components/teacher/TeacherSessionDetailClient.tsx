@@ -354,9 +354,9 @@ const RATING_TARGETS: RatingTarget[] = [
   worldId: "w3",
   competenceIds: ["C4"],
   title: {
-    "zh-Hans": "创作表达卡片（作者声音辅助确认）",
-    "zh-Hant": "創作表達卡片（作者聲音輔助確認）",
-    en: "Creative Expression Card (Authorship Check)",
+    "zh-Hans": "创作表达卡片",
+    "zh-Hant": "創作表達卡片",
+    en: "Creative Expression Card",
   },
   check: {
     "zh-Hans":

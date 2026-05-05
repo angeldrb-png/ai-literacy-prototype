@@ -74,14 +74,45 @@ export function scoreWorld2(evidence: EvidenceBundle): ScoreItem[] {
     };
 
     function inferExpected(id: string): string[] {
-      const text = id.toLowerCase();
-      if (expected[id]) return expected[id];
-      if (/很快|quick|马上|馬上|解决|解決/.test(id)) return ["check", "remove"];
-      if (/微塑料|microplastic|food|食物链|食物鏈/.test(id)) return ["check", "keep"];
-      if (/海洋|ocean|污染|pollution|影响|影響/.test(id)) return ["keep"];
-      if (/减少|減少|reduce|single-use|一次性/.test(id)) return ["keep"];
-      return ["check"];
-    }
+  const text = id.toLowerCase();
+
+  if (expected[id]) return expected[id];
+
+  // Overclaim: "this problem can be solved quickly" should not be published directly.
+  if (/很快|quick|马上|馬上|解决|解決|solved quickly/.test(id)) {
+    return ["check", "remove"];
+  }
+
+  // Factual but still source-sensitive claims. Both "keep" and "check" are acceptable.
+  if (
+    /微塑料|塑膠微粒|塑料微粒|microplastic|smaller particles|small particles|food chain|食物链|食物鏈|marine life|海洋生物/.test(
+      id
+    )
+  ) {
+    return ["check", "keep"];
+  }
+
+  // Basic factual claim about plastic pollution and ocean environment.
+  if (
+    /塑料污染|塑膠污染|plastic pollution|affects? the ocean|海洋環境|海洋环境|影响海洋|影響海洋/.test(
+      id
+    )
+  ) {
+    return ["keep"];
+  }
+
+  // Practical action claim: using less plastic, reducing single-use plastic, recycling, long-term action.
+  if (
+    /少用|減少|减少|use less|less plastic|reduce|single-use|一次性|分類回收|分类回收|long-term|长期|長期/.test(
+      id
+    )
+  ) {
+    return ["keep"];
+  }
+
+  // Unknown claim should be checked, not directly published.
+  return ["check"];
+}
 
     let total = 0;
     const itemScores = entries.map(([claimId, statusAny]) => {
@@ -91,9 +122,8 @@ export function scoreWorld2(evidence: EvidenceBundle): ScoreItem[] {
       total += itemScore;
       return { claimId, status, expected: key, itemScore };
     });
-    const average = total / entries.length;
-    const score = average >= 0.85 ? 3 : average >= 0.6 ? 2 : average >= 0.3 ? 1 : 0;
-
+    const correctCount = itemScores.filter((item) => item.itemScore >= 1).length;
+const score = Math.min(3, correctCount);
     scores.push(
       makeScore({
         worldId: "w2",
@@ -103,7 +133,11 @@ export function scoreWorld2(evidence: EvidenceBundle): ScoreItem[] {
         scoreId: "W2-R3",
         scoringSource: "auto_keyed",
         evidenceStrength: "strong",
-        evidence: { itemScores, average },
+        evidence: {
+  itemScores,
+  correctCount,
+  answeredClaimCount: entries.length,
+},
         rationale:
           "Scores claim checking with a task-specific answer key. This is a primary automatic evidence source for accept/revise/reject judgement.",
       })
@@ -147,6 +181,7 @@ export function scoreWorld2(evidence: EvidenceBundle): ScoreItem[] {
           ? "strong"
           : "limited",
         coverageLevel: "supporting",
+        includeInCompetenceProfile: false,
         evidence: {
           sourceCheckViewed,
           sourceCheckChoice,
