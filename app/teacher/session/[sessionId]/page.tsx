@@ -10,6 +10,8 @@ export default async function TeacherSessionPage({
   if (!(await isTeacherAuthenticated())) {
     redirect("/teacher/login");
   }
+
   const { sessionId } = await params;
+
   return <TeacherSessionDetailClient sessionId={sessionId} />;
 }
