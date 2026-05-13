@@ -97,10 +97,10 @@ const TRANSLATIONS: Record<string, { "zh-Hant": string; en: string }> = {
   "完成前一个任务后解锁": { "zh-Hant": "完成前一個任務後解鎖", en: "Unlock after the previous mission" },
 
   "学习推荐站": { "zh-Hant": "學習推薦站", en: "Learning Recommender" },
-  "看AI推荐怎么帮你学习, 也看它会不会越推越窄。": {
-    "zh-Hant": "看看 AI 推薦如何幫助你學習，也看看它會否愈推愈窄。",
-    en: "See how AI recommendations can support learning—and how they might narrow what you see.",
-  },
+  "看AI推荐怎么帮你学习，也看它会不会越推越窄。": {
+  "zh-Hant": "看看 AI 推薦如何幫助你學習，也看看它會否愈推愈窄。",
+  en: "See how AI recommendations can support learning—and how they might narrow what you see.",
+},
   "信息核查工作台": { "zh-Hant": "資訊核查工作台", en: "Info Check Desk" },
   "判断AI给的信息能不能直接用。": {
     "zh-Hant": "判斷 AI 提供的資訊能否直接使用。",
@@ -384,6 +384,8 @@ function DragBoard<T extends string>({
   onAssign,
   unassignedLabel = "待处理卡片",
   emptyLabel = "拖到这里，或先点选卡片再点目标栏",
+  allAssignedLabel = "所有卡片都已放入栏目。",
+  selectedHintLabel = "已选中一张卡片。你可以拖拽它，或直接点击目标栏目。",
 }: {
   title: string;
   description?: string;
@@ -393,6 +395,8 @@ function DragBoard<T extends string>({
   onAssign: (cardId: string, columnId: T) => void;
   unassignedLabel?: string;
   emptyLabel?: string;
+  allAssignedLabel?: string;
+  selectedHintLabel?: string;
 }) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -439,7 +443,11 @@ function DragBoard<T extends string>({
       <div className="mt-4 rounded-2xl bg-slate-50 p-3">
         <div className="mb-2 text-xs font-medium text-slate-500">{unassignedLabel}</div>
         <div className="grid gap-2 md:grid-cols-2">
-          {unassignedCards.length ? unassignedCards.map(renderCard) : <div className="text-sm text-slate-400">所有卡片都已放入栏目。</div>}
+          {unassignedCards.length ? (
+  unassignedCards.map(renderCard)
+) : (
+  <div className="text-sm text-slate-400">{allAssignedLabel}</div>
+)}
         </div>
       </div>
 
@@ -476,7 +484,9 @@ function DragBoard<T extends string>({
         })}
       </div>
 
-      {selectedId ? <p className="mt-3 text-xs text-slate-500">已选中一张卡片。你可以拖拽它，或直接点击目标栏目。</p> : null}
+      {selectedId ? (
+  <p className="mt-3 text-xs text-slate-500">{selectedHintLabel}</p>
+) : null}
     </div>
   );
 }
@@ -3687,6 +3697,359 @@ const w5ResourceReasonOptions = useMemo(
       ],
     },
   }) as const, [locale]);
+  const w1ModeOptions = useMemo(
+  () =>
+    [
+      {
+        id: "personal",
+        label:
+          locale === "en"
+            ? "Best for me"
+            : locale === "zh-Hant"
+            ? "最適合我"
+            : "最适合我",
+      },
+      {
+        id: "popular",
+        label:
+          locale === "en"
+            ? "What everyone is learning"
+            : locale === "zh-Hant"
+            ? "大家都在學"
+            : "大家都在学",
+      },
+      {
+        id: "explore",
+        label:
+          locale === "en"
+            ? "Try a new direction"
+            : locale === "zh-Hant"
+            ? "試試新方向"
+            : "试试新方向",
+      },
+    ] as const,
+  [locale]
+);
+const w1RuleOptions = useMemo(
+  () =>
+    [
+      {
+        key: "explainReason",
+        label:
+          locale === "en"
+            ? "Explain why something is recommended"
+            : locale === "zh-Hant"
+            ? "解釋推薦原因"
+            : "解释推荐原因",
+      },
+      {
+        key: "teacherReview",
+        label:
+          locale === "en"
+            ? "Allow teachers to review and adjust"
+            : locale === "zh-Hant"
+            ? "允許老師查看和調整"
+            : "允许老师查看和调整",
+      },
+      {
+        key: "tryNewThings",
+        label:
+          locale === "en"
+            ? "Give students a “try a new direction” button"
+            : locale === "zh-Hant"
+            ? "給學生一個「試試新方向」按鈕"
+            : "给学生一个“试试新方向”按钮",
+      },
+      {
+        key: "sayWhatDataUsed",
+        label:
+          locale === "en"
+            ? "Clearly state which learning records were used"
+            : locale === "zh-Hant"
+            ? "清楚說明用了哪些學習記錄"
+            : "清楚说明用了哪些学习记录",
+      },
+      {
+        key: "onlyPopular",
+        label:
+          locale === "en"
+            ? "Only recommend popular content, regardless of individual needs"
+            : locale === "zh-Hant"
+            ? "只推熱門內容，不管每個人的需要"
+            : "只推热门内容，不管每个人的需要",
+      },
+    ] as const,
+  [locale]
+);
+const commuteSurveyData = useMemo(
+  () =>
+    locale === "en"
+      ? [
+          { type: "Walking", count: 18, note: "More students live near the school." },
+          { type: "Parent drop-off", count: 12, note: "This is more concentrated during the morning peak." },
+          { type: "School bus / public transport", count: 9, note: "These students mainly come from farther neighbourhoods." },
+          { type: "Cycling", count: 6, note: "Safer routes need to be considered." },
+        ]
+      : locale === "zh-Hant"
+      ? [
+          { type: "步行", count: 18, note: "離學校近的同學較多" },
+          { type: "家長接送", count: 12, note: "早高峰比較集中" },
+          { type: "校車／公交", count: 9, note: "主要來自較遠社區" },
+          { type: "騎車", count: 6, note: "需要考慮安全路線" },
+        ]
+      : commuteSurvey,
+  [locale]
+);
+const roleOutputsData = useMemo(
+  () =>
+    ({
+      data: {
+        title:
+          locale === "en"
+            ? "Data organiser"
+            : locale === "zh-Hant"
+            ? "數據整理助手"
+            : "数据整理助手",
+        body:
+          locale === "en"
+            ? [
+                "Walking 40.0%",
+                "Parent drop-off 26.7%",
+                "School bus / public transport 20.0%",
+                "Cycling 13.3%",
+              ]
+            : locale === "zh-Hant"
+            ? [
+                "步行 40.0%",
+                "家長接送 26.7%",
+                "校車／公交 20.0%",
+                "騎車 13.3%",
+              ]
+            : [
+                "步行 40.0%",
+                "家长接送 26.7%",
+                "校车/公交 20.0%",
+                "骑车 13.3%",
+              ],
+      },
+      summary: {
+        title:
+          locale === "en"
+            ? "Summary helper"
+            : locale === "zh-Hant"
+            ? "摘要助手"
+            : "摘要助手",
+        body:
+          locale === "en"
+            ? [
+                "Walking is the most common way to get to school.",
+                "Parent drop-off is concentrated during the morning peak, which may cause congestion.",
+                "Students from farther neighbourhoods rely more on school buses or public transport.",
+              ]
+            : locale === "zh-Hant"
+            ? [
+                "步行是最常見的上學方式。",
+                "家長接送集中在早高峰，容易造成擁擠。",
+                "來自較遠社區的同學更依賴校車或公交。",
+              ]
+            : [
+                "步行是最常见的上学方式。",
+                "家长接送集中在早高峰，容易堵车。",
+                "较远社区的同学更依赖校车或公交。",
+              ],
+      },
+      draft: {
+        title:
+          locale === "en"
+            ? "Suggestion-draft helper"
+            : locale === "zh-Hant"
+            ? "建議草稿助手"
+            : "建议草稿助手",
+        body:
+          locale === "en"
+            ? [
+                "The school could improve traffic flow near the gate during the morning peak.",
+                "The school could provide safer route reminders for students who walk or cycle.",
+                "The report should note that different travel modes create different needs.",
+              ]
+            : locale === "zh-Hant"
+            ? [
+                "建議學校優化早高峰校門口的通行安排。",
+                "建議為步行和騎車同學設計更安全的路線提示。",
+                "建議在簡報中提醒大家，不同上學方式有不同需要。",
+              ]
+            : [
+                "建议学校优化校门口高峰时段通行安排。",
+                "建议为步行和骑车同学设计更安全的路线提示。",
+                "建议在简报中提醒大家不同上学方式的需要不一样。",
+              ],
+      },
+    } as const),
+  [locale]
+);
+const recycleCasesData = useMemo(
+  () =>
+    ({
+      crushed: {
+        title:
+          locale === "en"
+            ? "Crushed paper box"
+            : locale === "zh-Hant"
+            ? "被壓扁後的紙盒"
+            : "被压扁后的纸盒",
+        emoji: "📦",
+        system:
+          locale === "en"
+            ? "The system classified it as “other waste”."
+            : locale === "zh-Hant"
+            ? "系統把它判成了「其他垃圾」。"
+            : "系统把它判成了“其他垃圾”。",
+        actual:
+          locale === "en"
+            ? "A more reasonable judgement is “recyclable paper”."
+            : locale === "zh-Hant"
+            ? "更合理的判斷是「可回收紙類」。"
+            : "更合理的判断是“可回收纸类”。",
+      },
+    } as const),
+  [locale]
+);
+const trainingImagesByCaseData = useMemo(
+  () =>
+    ({
+      crushed: [
+        {
+          id: "c1",
+          title:
+            locale === "en"
+              ? "Crushed paper box"
+              : locale === "zh-Hant"
+              ? "壓扁的紙盒"
+              : "压扁的纸盒",
+          note:
+            locale === "en"
+              ? "Useful"
+              : locale === "zh-Hant"
+              ? "有用"
+              : "有用",
+          good: true,
+        },
+        {
+          id: "c3",
+          title:
+            locale === "en"
+              ? "Paper boxes with different damage levels"
+              : locale === "zh-Hant"
+              ? "不同破損程度的紙盒"
+              : "不同破损程度的纸盒",
+          note:
+            locale === "en"
+              ? "Useful"
+              : locale === "zh-Hant"
+              ? "有用"
+              : "有用",
+          good: true,
+        },
+        {
+          id: "c5",
+          title:
+            locale === "en"
+              ? "Folded paper box"
+              : locale === "zh-Hant"
+              ? "摺起來的紙盒"
+              : "折起来的纸盒",
+          note:
+            locale === "en"
+              ? "Useful"
+              : locale === "zh-Hant"
+              ? "有用"
+              : "有用",
+          good: true,
+        },
+        {
+          id: "c6",
+          title:
+            locale === "en"
+              ? "Wet or deformed paper box"
+              : locale === "zh-Hant"
+              ? "潮濕變形的紙盒"
+              : "潮湿变形的纸盒",
+          note:
+            locale === "en"
+              ? "Useful"
+              : locale === "zh-Hant"
+              ? "有用"
+              : "有用",
+          good: true,
+        },
+        {
+          id: "c2",
+          title:
+            locale === "en"
+              ? "Complete flat paper box"
+              : locale === "zh-Hant"
+              ? "完整平整的紙盒"
+              : "完整平整的纸盒",
+          note:
+            locale === "en"
+              ? "Too narrow"
+              : locale === "zh-Hant"
+              ? "例子太窄"
+              : "例子太窄",
+          good: false,
+        },
+        {
+          id: "c4",
+          title:
+            locale === "en"
+              ? "Classroom desk photo"
+              : locale === "zh-Hant"
+              ? "教室桌面照片"
+              : "教室桌面照片",
+          note:
+            locale === "en"
+              ? "Irrelevant"
+              : locale === "zh-Hant"
+              ? "不相關"
+              : "不相关",
+          good: false,
+        },
+        {
+          id: "c7",
+          title:
+            locale === "en"
+              ? "Plastic bottle photo"
+              : locale === "zh-Hant"
+              ? "塑膠瓶照片"
+              : "塑料瓶照片",
+          note:
+            locale === "en"
+              ? "Irrelevant"
+              : locale === "zh-Hant"
+              ? "不相關"
+              : "不相关",
+          good: false,
+        },
+        {
+          id: "c8",
+          title:
+            locale === "en"
+              ? "Ordinary scenery photo"
+              : locale === "zh-Hant"
+              ? "普通風景照片"
+              : "普通风景照片",
+          note:
+            locale === "en"
+              ? "Irrelevant"
+              : locale === "zh-Hant"
+              ? "不相關"
+              : "不相关",
+          good: false,
+        },
+      ],
+    } as const),
+  [locale]
+);
 
   const recipientOptions = useMemo<Array<{ id: W3Recipient; emoji: string; title: string; note: string }>>(() => (locale === "en" ? [
     { id: "junior", emoji: "🌱", title: "A younger student who just started secondary school", note: "Help them feel more at ease" },
@@ -4395,7 +4758,7 @@ mechanismCorrectCount: w3MechanismCorrectCount,
 
       await saveStep("w4", "w4_step1", {
         taskContextId: "commute_survey_school_suggestions",
-        surveyItems: commuteSurvey,
+        surveyItems: commuteSurveyData,
 
         // Legacy alias retained because older report/scoring may still read it.
         useAiChoice: w4UseChoice,
@@ -5089,8 +5452,8 @@ setW3LastAiReply(aiText);
 
   const world1Cards = learningCardsByModeData[w1Mode];
   const world5Images =
-  w5Problem && w5Problem in trainingImagesByCase
-    ? trainingImagesByCase[w5Problem as keyof typeof trainingImagesByCase]
+  w5Problem && w5Problem in trainingImagesByCaseData
+    ? trainingImagesByCaseData[w5Problem as keyof typeof trainingImagesByCaseData]
     : [];
     function getW5TrainingIcon(imageId: string) {
   if (["c1", "c3", "c5", "c6"].includes(imageId)) return "📦";
@@ -5193,12 +5556,12 @@ function getW4ColumnLabel(columnId: string) {
 }
   const selectedW4RoleOutput =
   w4Role === "data" || w4Role === "summary" || w4Role === "draft"
-    ? roleOutputs[w4Role]
+    ? roleOutputsData[w4Role]
     : null;
   
     const selectedW5Case =
-  w5Problem && w5Problem in recycleCases
-    ? recycleCases[w5Problem as keyof typeof recycleCases]
+  w5Problem && w5Problem in recycleCasesData
+    ? recycleCasesData[w5Problem as keyof typeof recycleCasesData]
     : null;
 function labelFromOptions(
   id: string,
@@ -5666,7 +6029,7 @@ return (
   </div>
 </div>
                     <div className="grid gap-4 md:grid-cols-2">
-                      {learningCardsByMode.personal.map((card) => {
+                      {learningCardsByModeData.personal.map((card) => {
                         const opened = w1OpenedCards.includes(card.id);
                         return (
                           <button
@@ -5681,7 +6044,15 @@ return (
                           >
                             <div className="mb-3 flex items-center justify-between">
                               <Pill tone={opened ? "light" : "outline"}>{card.label}</Pill>
-                              {opened && <Pill tone="light">已查看</Pill>}
+                              {opened && (
+  <Pill tone="light">
+    {locale === "en"
+      ? "Viewed"
+      : locale === "zh-Hant"
+      ? "已查看"
+      : "已查看"}
+  </Pill>
+)}
                             </div>
                             <div className="text-base font-semibold">{card.title}</div>
                             <div className={cn("mt-1 text-sm leading-6", opened ? "text-white/80" : "text-slate-500")}>
@@ -5702,24 +6073,34 @@ return (
 
               {w1Step === 1 && (
                 <Section
-                  title="换一种推荐方式，看看结果会不会变"
-                  description="点上面的标签切换模式。先至少看过两种模式，再回答下面两个问题。"
+                  title={
+  locale === "en"
+    ? "Try another recommendation mode and see whether the results change"
+    : locale === "zh-Hant"
+    ? "換一種推薦方式，看看結果會否改變"
+    : "换一种推荐方式，看看结果会不会变"
+}
+description={
+  locale === "en"
+    ? "Use the tabs above to switch modes. View at least two modes first, then answer the two questions below."
+    : locale === "zh-Hant"
+    ? "點上面的標籤切換模式。先至少看過兩種模式，再回答下面兩個問題。"
+    : "点上面的标签切换模式。先至少看过两种模式，再回答下面两个问题。"
+}
                 >
-                  <div className="mb-4 flex flex-wrap gap-2">
-                    {[
-                      ["personal", "最适合我"],
-                      ["popular", "大家都在学"],
-                      ["explore", "试试新方向"],
-                    ].map(([id, label]) => (
-                      <TagButton
-                        key={id}
-                        active={w1Mode === id}
-                        onClick={() => onChangeWorld1Mode(id as "personal" | "popular" | "explore")}
-                      >
-                        {label}
-                      </TagButton>
-                    ))}
-                  </div>
+                  <div className="flex flex-wrap gap-2">
+  {w1ModeOptions.map((item) => (
+    <TagButton
+      key={item.id}
+      active={w1Mode === item.id}
+      onClick={() =>
+        onChangeWorld1Mode(item.id as "personal" | "popular" | "explore")
+      }
+    >
+      {item.label}
+    </TagButton>
+  ))}
+</div>
                   <div className="grid gap-4 md:grid-cols-2">
                     {world1Cards.map((card) => (
                       <div key={card.id} className="rounded-3xl border border-slate-200 bg-white p-4">
@@ -5734,31 +6115,39 @@ return (
                   </div>
                   <div className="mt-5 grid gap-4 md:grid-cols-2">
                     <div className="rounded-3xl bg-slate-50 p-4">
-                      <div className="mb-3 text-sm font-medium text-slate-700">你觉得哪一种最能帮你学习？</div>
+                      <div className="mb-3 text-sm font-medium text-slate-700">{locale === "en"
+  ? "Which mode do you think helps your learning most?"
+  : locale === "zh-Hant"
+  ? "你覺得哪一種最能幫助你學習？"
+  : "你觉得哪一种最能帮你学习？"}</div>
                       <div className="flex flex-wrap gap-2">
-                        {[
-                          ["personal", "最适合我"],
-                          ["popular", "大家都在学"],
-                          ["explore", "试试新方向"],
-                        ].map(([id, label]) => (
-                          <TagButton key={id} active={w1BestMode === id} onClick={() => setW1BestMode(id)}>
-                            {label}
-                          </TagButton>
-                        ))}
+                       {w1ModeOptions.map((item) => (
+  <TagButton
+    key={item.id}
+    active={w1BestMode === item.id}
+    onClick={() => setW1BestMode(item.id)}
+  >
+    {item.label}
+  </TagButton>
+))}
                       </div>
                     </div>
                     <div className="rounded-3xl bg-slate-50 p-4">
-                      <div className="mb-3 text-sm font-medium text-slate-700">你觉得哪一种最可能越推越窄？</div>
+                      <div className="mb-3 text-sm font-medium text-slate-700">{locale === "en"
+  ? "Which mode is most likely to become too narrow?"
+  : locale === "zh-Hant"
+  ? "你覺得哪一種最可能愈推愈窄？"
+  : "你觉得哪一种最可能越推越窄？"}</div>
                       <div className="flex flex-wrap gap-2">
-                        {[
-                          ["personal", "最适合我"],
-                          ["popular", "大家都在学"],
-                          ["explore", "试试新方向"],
-                        ].map(([id, label]) => (
-                          <TagButton key={id} active={w1NarrowMode === id} onClick={() => setW1NarrowMode(id)}>
-                            {label}
-                          </TagButton>
-                        ))}
+                        {w1ModeOptions.map((item) => (
+  <TagButton
+    key={item.id}
+    active={w1NarrowMode === item.id}
+    onClick={() => setW1NarrowMode(item.id)}
+  >
+    {item.label}
+  </TagButton>
+))}
                       </div>
                     </div>
                   </div>
@@ -5801,18 +6190,24 @@ return (
 
               {w1Step === 2 && (
                 <Section
-                  title="如果这个系统要给全校学生用，你会给它加哪些守则？"
-                  description="点一下你觉得应该保留的系统守则。页面右边会实时更新系统状态。"
+                  title={
+  locale === "en"
+    ? "If this system were used across the school, what rules would you add?"
+    : locale === "zh-Hant"
+    ? "如果這個系統要給全校學生使用，你會加上哪些守則？"
+    : "如果这个系统要给全校学生用，你会给它加哪些守则？"
+}
+description={
+  locale === "en"
+    ? "Choose the system rules you think should be kept. The settings card on the right will update as you choose."
+    : locale === "zh-Hant"
+    ? "點一下你認為應該保留的系統守則。右邊的設定卡會同步更新。"
+    : "点一下你觉得应该保留的系统守则。页面右边会实时更新系统状态。"
+}
                 >
                   <div className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">
                     <div className="space-y-3">
-                      {[
-                        ["explainReason", "解释推荐原因"],
-                        ["teacherReview", "允许老师查看和调整"],
-                        ["tryNewThings", "给学生一个“试试新方向”按钮"],
-                        ["sayWhatDataUsed", "清楚说明用了哪些学习记录"],
-                        ["onlyPopular", "只推热门内容，不管每个人的需要"],
-                      ].map(([key, label]) => (
+                      {w1RuleOptions.map(({ key, label }) => (
                         <label
                           key={key}
                           className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4"
@@ -5894,8 +6289,20 @@ return (
 
               {w1Step === 3 && (
                 <Section
-                  title="提交测试反馈卡"
-                  description="请写两小段：这个系统最有帮助的地方是什么？你最想提醒老师注意什么？"
+                  title={
+  locale === "en"
+    ? "Submit your feedback card"
+    : locale === "zh-Hant"
+    ? "提交測試回饋卡"
+    : "提交测试反馈卡"
+}
+description={
+  locale === "en"
+    ? "Write two short parts: What was most helpful about this system? What would you most want the teacher to notice?"
+    : locale === "zh-Hant"
+    ? "請寫兩小段：這個系統最有幫助的地方是甚麼？你最想提醒老師注意甚麼？"
+    : "请写两小段：这个系统最有帮助的地方是什么？你最想提醒老师注意什么？"
+}
                 >
                   <div className="grid gap-4 md:grid-cols-2">
                     <textarea
@@ -5928,7 +6335,11 @@ return (
                       disabled={!(w1Good.trim().length > 8 && w1Warn.trim().length > 8)}
                       onClick={() => finishWorld("w1")}
                     >
-                      提交测试反馈
+                      {locale === "en"
+  ? "Submit feedback"
+  : locale === "zh-Hant"
+  ? "提交測試回饋"
+  : "提交测试反馈"}
                     </Button>
                   </div>
                 </Section>
@@ -5978,23 +6389,43 @@ return (
                   <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
                     <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
                       <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <User className="h-4 w-4" /> 我的输入
+                        <User className="h-4 w-4" /> {tr(locale, "我的输入")}
                       </div>
                       <div className="rounded-2xl bg-white p-4 text-sm leading-7 text-slate-600">
-                        请帮我整理关于塑料污染的重点，写成适合中学生看的短说明。
+                        {locale === "en"
+  ? "Please organise the key points about plastic pollution and write a short explanation suitable for secondary students."
+  : locale === "zh-Hant"
+  ? "請幫我整理關於塑膠污染的重點，寫成適合中學生看的短說明。"
+  : "请帮我整理关于塑料污染的重点，写成适合中学生看的短说明。"}
                       </div>
                     </div>
                     <div className="rounded-3xl border border-slate-200 bg-white p-4">
                       <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <Bot className="h-4 w-4" /> AI 输出
+                        <Bot className="h-4 w-4" /> {tr(locale, "AI 输出")}
                       </div>
                       <div className="space-y-3">
-                        {[
-                          "塑料污染会影响海洋环境。",
-                          "塑料微粒可能影响海洋生物。",
-                          "减少一次性塑料很重要。",
-                          "学校少用一次性塑料可以帮助改善问题。",
-                        ].map((item) => (
+                        {(
+  locale === "en"
+    ? [
+        "Plastic pollution can harm the ocean environment.",
+        "Microplastics may affect marine life.",
+        "Reducing single-use plastic matters.",
+        "Schools can help by using fewer single-use plastics.",
+      ]
+    : locale === "zh-Hant"
+    ? [
+        "塑膠污染會影響海洋環境。",
+        "塑膠微粒可能影響海洋生物。",
+        "減少一次性塑膠很重要。",
+        "學校少用一次性塑膠可以幫助改善問題。",
+      ]
+    : [
+        "塑料污染会影响海洋环境。",
+        "塑料微粒可能影响海洋生物。",
+        "减少一次性塑料很重要。",
+        "学校少用一次性塑料可以帮助改善问题。",
+      ]
+).map((item) => (
                           <div key={item} className="rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
                             {item}
                           </div>
@@ -6004,34 +6435,86 @@ return (
                   </div>
                   <div className="mt-5 rounded-3xl bg-slate-50 p-4">
                     <div className="mb-3 text-sm font-medium text-slate-700">
-                      这个 AI 现在主要在帮你完成哪一步？
+                      {locale === "en"
+  ? "What is this AI mainly helping you do right now?"
+  : locale === "zh-Hant"
+  ? "這個 AI 現在主要在幫你完成哪一步？"
+  : "这个 AI 现在主要在帮你完成哪一步？"}
                     </div>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                       <OptionCard
                         icon={Feather}
-                        title="整理资料并生成说明草稿"
-                        note="它正在把资料变成适合继续修改的草稿。"
+                        title={
+  locale === "en"
+    ? "Organise information and draft an explanation"
+    : locale === "zh-Hant"
+    ? "整理資料並生成說明草稿"
+    : "整理资料并生成说明草稿"
+}
+note={
+  locale === "en"
+    ? "It is turning information into a draft that can still be revised."
+    : locale === "zh-Hant"
+    ? "它正在把資料變成可以繼續修改的草稿。"
+    : "它正在把资料变成适合继续修改的草稿。"
+}
                         selected={w2RoleChoice === "draft"}
                         onClick={() => setW2RoleChoice("draft")}
                       />
                       <OptionCard
                         icon={Brain}
-                        title="直接替老师做最后判断"
-                        note="它已经替你决定最后能不能发布。"
+                       title={
+  locale === "en"
+    ? "Make the final decision for the teacher"
+    : locale === "zh-Hant"
+    ? "直接替老師做最後判斷"
+    : "直接替老师做最后判断"
+}
+note={
+  locale === "en"
+    ? "It has already decided whether the content can be published."
+    : locale === "zh-Hant"
+    ? "它已經替你決定最後能不能發布。"
+    : "它已经替你决定最后能不能发布。"
+}
                         selected={w2RoleChoice === "final"}
                         onClick={() => setW2RoleChoice("final")}
                       />
                       <OptionCard
                         icon={Sparkles}
-                        title="只是把页面变好看"
-                        note="它没有真的在处理内容。"
+                        title={
+  locale === "en"
+    ? "Only make the page look nicer"
+    : locale === "zh-Hant"
+    ? "只是把頁面變好看"
+    : "只是把页面变好看"
+}
+note={
+  locale === "en"
+    ? "It is not really processing the content."
+    : locale === "zh-Hant"
+    ? "它沒有真的在處理內容。"
+    : "它没有真的在处理内容。"
+}
                         selected={w2RoleChoice === "beauty"}
                         onClick={() => setW2RoleChoice("beauty")}
                       />
                       <OptionCard
                         icon={ClipboardList}
-                        title="帮你安排活动日期"
-                        note="它主要在做行政排程。"
+                        title={
+  locale === "en"
+    ? "Help schedule activity dates"
+    : locale === "zh-Hant"
+    ? "幫你安排活動日期"
+    : "帮你安排活动日期"
+}
+note={
+  locale === "en"
+    ? "It is mainly doing administrative scheduling."
+    : locale === "zh-Hant"
+    ? "它主要在做行政排程。"
+    : "它主要在做行政排程。"
+}
                         selected={w2RoleChoice === "admin"}
                         onClick={() => setW2RoleChoice("admin")}
                       />
@@ -6059,8 +6542,20 @@ return (
 
               {w2Step === 1 && (
                 <Section
-                  title="AI 给了你两版草稿，先选一个更适合继续修改的版本"
-                  description="这里不是选‘绝对正确答案’，而是选一个更适合继续加工的信息草稿。"
+                  title={
+  locale === "en"
+    ? "AI gave you two drafts. Choose the one that is better for further revision."
+    : locale === "zh-Hant"
+    ? "AI 給了你兩版草稿，先選一個更適合繼續修改的版本"
+    : "AI 给了你两版草稿，先选一个更适合继续修改的版本"
+}
+description={
+  locale === "en"
+    ? "This is not about choosing a perfect answer. Choose the draft that is more suitable for further checking and improvement."
+    : locale === "zh-Hant"
+    ? "這裡不是選「絕對正確答案」，而是選一個更適合繼續加工的資訊草稿。"
+    : "这里不是选‘绝对正确答案’，而是选一个更适合继续加工的信息草稿。"
+}
                 >
                   <div className="grid gap-4 md:grid-cols-2">
                     {(Object.keys(infoTaskDraftsData) as Array<"A" | "B">).map((key) => {
@@ -6079,7 +6574,15 @@ return (
                         >
                           <div className="mb-3 flex items-center justify-between">
                             <Pill tone={selected ? "light" : "outline"}>{draft.title}</Pill>
-                            {selected && <Pill tone="light">继续修改这个</Pill>}
+                            {selected && (
+  <Pill tone="light">
+    {locale === "en"
+      ? "Revise this one"
+      : locale === "zh-Hant"
+      ? "繼續修改這個"
+      : "继续修改这个"}
+  </Pill>
+)}
                           </div>
                           <div className="text-base leading-8">{draft.text}</div>
                         </button>
@@ -6108,10 +6611,29 @@ return (
 
               {w2Step === 2 && selectedDraft && (
                 <Section
-                  title="发布前检查：哪句可以保留，哪句要再查一下？"
-                  description="这张信息卡是要发给全校同学看的，所以不能把不确定的话直接发出去。每一句都选一种状态。"
+                  title={
+  locale === "en"
+    ? "Check before publishing: what can stay, and what still needs checking?"
+    : locale === "zh-Hant"
+    ? "發布前檢查：哪句可以保留，哪句要再查一下？"
+    : "发布前检查：哪句可以保留，哪句要再查一下？"
+}
+description={
+  locale === "en"
+    ? "This information card will be shared with the whole school, so uncertain claims should not be published directly. Choose one status for each sentence."
+    : locale === "zh-Hant"
+    ? "這張資訊卡是要發給全校同學看的，所以不能把不確定的話直接發出去。每一句都選一種狀態。"
+    : "这张信息卡是要发给全校同学看的，所以不能把不确定的话直接发出去。每一句都选一种状态。"
+}
                 >
-                  <div className="mb-3 text-sm text-slate-500">你刚才选中的草稿：{selectedDraft.title}</div>
+                  <div className="mb-3 text-sm text-slate-500">
+  {locale === "en"
+    ? "The draft you selected:"
+    : locale === "zh-Hant"
+    ? "你剛才選中的草稿："
+    : "你刚才选中的草稿："}{" "}
+  {selectedDraft.title}
+</div>
                   <div className="space-y-4">
                     {selectedDraft.claims.map((claim) => (
                       <div key={claim} className="rounded-3xl border border-slate-200 p-4">
@@ -6121,19 +6643,31 @@ return (
                             active={w2ClaimStatus[claim] === "keep"}
                             onClick={() => setW2ClaimStatus((prev) => ({ ...prev, [claim]: "keep" }))}
                           >
-                            可以保留
+                            {locale === "en"
+  ? "Can keep"
+  : locale === "zh-Hant"
+  ? "可以保留"
+  : "可以保留"}
                           </TagButton>
                           <TagButton
                             active={w2ClaimStatus[claim] === "check"}
                             onClick={() => setW2ClaimStatus((prev) => ({ ...prev, [claim]: "check" }))}
                           >
-                            要再查一下
+                            {locale === "en"
+  ? "Check again"
+  : locale === "zh-Hant"
+  ? "要再查一下"
+  : "要再查一下"}
                           </TagButton>
                           <TagButton
                             active={w2ClaimStatus[claim] === "remove"}
                             onClick={() => setW2ClaimStatus((prev) => ({ ...prev, [claim]: "remove" }))}
                           >
-                            不能直接发
+                            {locale === "en"
+  ? "Do not publish directly"
+  : locale === "zh-Hant"
+  ? "不能直接發"
+  : "不能直接发"}
                           </TagButton>
                         </div>
                       </div>
@@ -6233,8 +6767,20 @@ return (
 
               {w2Step === 3 && selectedDraft && (
                 <Section
-                  title="交出最终可发布的信息卡"
-                  description="看看你决定保留什么、要处理什么，再写一句说明。"
+                  title={
+  locale === "en"
+    ? "Submit the final information card"
+    : locale === "zh-Hant"
+    ? "交出最後可發布的資訊卡"
+    : "交出最终可发布的信息卡"
+}
+description={
+  locale === "en"
+    ? "Review what you decided to keep or check, then write one short explanation."
+    : locale === "zh-Hant"
+    ? "看看你決定保留甚麼、要處理甚麼，再寫一句說明。"
+    : "看看你决定保留什么、要处理什么，再写一句说明。"
+}
                 >
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="rounded-3xl bg-emerald-50 p-5">
@@ -6251,7 +6797,11 @@ return (
                       </div>
                     </div>
                     <div className="rounded-3xl bg-amber-50 p-5">
-                      <div className="mb-3 text-sm font-medium text-amber-700">我决定删掉或再查一下的内容</div>
+                      <div className="mb-3 text-sm font-medium text-amber-700">{locale === "en"
+  ? "Content I decided to remove or check again"
+  : locale === "zh-Hant"
+  ? "我決定刪掉或再查一下的內容"
+  : "我决定删掉或再查一下的内容"}</div>
                       <div className="space-y-2 text-sm leading-7 text-slate-600">
                         {selectedDraft.claims
                           .filter((claim) => w2ClaimStatus[claim] !== "keep")
@@ -6259,7 +6809,11 @@ return (
                             <div key={claim}>• {claim}</div>
                           ))}
                         {selectedDraft.claims.filter((claim) => w2ClaimStatus[claim] !== "keep").length === 0 && (
-                          <div>暂时还没有。</div>
+                          <div>{locale === "en"
+  ? "Nothing yet."
+  : locale === "zh-Hant"
+  ? "暫時還沒有。"
+  : "暂时还没有。"}。</div>
                         )}
                       </div>
                     </div>
@@ -6281,7 +6835,11 @@ return (
                       disabled={!(w2FinalReason.trim().length > 10)}
                       onClick={() => finishWorld("w2")}
                     >
-                      提交这张信息卡
+                      {locale === "en"
+  ? "Submit this information card"
+  : locale === "zh-Hant"
+  ? "提交這張資訊卡"
+  : "提交这张信息卡"}
                     </Button>
                   </div>
                 </Section>
@@ -6790,6 +7348,34 @@ description={
                     title={locale === "en" ? "Sort the materials" : locale === "zh-Hant" ? "分類素材卡" : "分类素材卡"}
                     description={locale === "en" ? "Drag each material to the most responsible choice." : locale === "zh-Hant" ? "把每張素材卡拖到最負責任的選擇。" : "把每张素材卡拖到最负责任的选择。"}
                     cards={w3AssetCards}
+                      unassignedLabel={
+    locale === "en"
+      ? "Materials to sort"
+      : locale === "zh-Hant"
+      ? "待分類素材"
+      : "待分类素材"
+  }
+  emptyLabel={
+    locale === "en"
+      ? "Drag a card here, or select a card and click this column."
+      : locale === "zh-Hant"
+      ? "把卡片拖到這裏，或先點選卡片再點目標欄。"
+      : "把卡片拖到这里，或先点选卡片再点目标栏。"
+  }
+  allAssignedLabel={
+    locale === "en"
+      ? "All material cards have been placed."
+      : locale === "zh-Hant"
+      ? "所有素材卡都已放入欄目。"
+      : "所有素材卡都已放入栏目。"
+  }
+  selectedHintLabel={
+    locale === "en"
+      ? "One card is selected. You can drag it, or click a target column."
+      : locale === "zh-Hant"
+      ? "已選中一張卡片。你可以拖動它，或直接點擊目標欄。"
+      : "已选中一张卡片。你可以拖拽它，或直接点击目标栏目。"
+  }
                     columns={[
                       { id: "use", title: locale === "en" ? "Can use" : locale === "zh-Hant" ? "可以使用" : "可以使用" },
                       { id: "credit", title: locale === "en" ? "Use with credit/disclosure" : locale === "zh-Hant" ? "可用，但要說明" : "可用，但要说明" },
@@ -7141,25 +7727,60 @@ w3AssetOptions.every((item) => !!w3AssetAllocation[item.id])) ||
               {w4Step === 0 && (
                 <Section
                   title={locale === "en" ? "First, look at the project your group needs to complete" : locale === "zh-Hant" ? "先看看你們這次要完成甚麼項目" : "先看你们这次要完成什么项目"}
-                  description="看完项目简要后，你会开始决定：哪些工作可以让 AI 帮忙，哪些还是要你们自己做。"
+                  description={
+  locale === "en"
+    ? "After reading the project brief, you will decide what AI can help with and what your group should still do yourselves."
+    : locale === "zh-Hant"
+    ? "看完項目簡要後，你會開始決定：哪些工作可以讓 AI 幫忙，哪些還是要你們自己做。"
+    : "看完项目简要后，你会开始决定：哪些工作可以让 AI 帮忙，哪些还是要你们自己做。"
+}
                 >
                   <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
                     <div className="rounded-3xl bg-slate-50 p-5">
-                      <div className="mb-3 text-sm font-medium text-slate-700">项目任务</div>
+                      <div className="mb-3 text-sm font-medium text-slate-700">{locale === "en"
+  ? "Project task"
+  : locale === "zh-Hant"
+  ? "項目任務"
+  : "项目任务"}</div>
                       <ul className="space-y-2 text-sm leading-7 text-slate-600">
-                        <li>• 整理“同学上学方式调查”结果</li>
-                        <li>• 做一页简报</li>
-                        <li>• 给学校写两条建议</li>
-                        <li>• 可以使用 AI 助手，但结论必须由小组负责</li>
+                        {(
+  locale === "en"
+    ? [
+        "Organise the results of a school travel survey.",
+        "Make a one-page briefing.",
+        "Write two suggestions for the school.",
+        "You may use an AI assistant, but your group is responsible for the final conclusions.",
+      ]
+    : locale === "zh-Hant"
+    ? [
+        "整理「同學上學方式調查」結果",
+        "做一頁簡報",
+        "給學校寫兩條建議",
+        "可以使用 AI 助手，但結論必須由小組負責",
+      ]
+    : [
+        "整理“同学上学方式调查”结果",
+        "做一页简报",
+        "给学校写两条建议",
+        "可以使用 AI 助手，但结论必须由小组负责",
+      ]
+).map((item) => (
+  <li key={item}>• {item}</li>
+))}
                       </ul>
                     </div>
                     <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                      <div className="mb-3 text-sm font-medium text-slate-700">调查结果（示意）</div>
+                      <div className="mb-3 text-sm font-medium text-slate-700">{locale === "en"
+  ? "Survey results (sample)"
+  : locale === "zh-Hant"
+  ? "調查結果（示意）"
+  : "调查结果（示意）"}</div>
                       <div className="space-y-3">
-                        {commuteSurvey.map((item) => (
+                        {commuteSurveyData.map((item) => (
                           <div key={item.type} className="rounded-2xl bg-slate-50 p-3 text-sm leading-7 text-slate-600">
                             <div className="font-medium text-slate-700">
-                              {item.type}：{item.count} 人
+                              {item.type}: {item.count}{" "}
+{locale === "en" ? "students" : "人"}
                             </div>
                             <div>{item.note}</div>
                           </div>
@@ -7204,6 +7825,34 @@ w3AssetOptions.every((item) => !!w3AssetAllocation[item.id])) ||
     : "可以拖动卡片，也可以先点卡片再点栏目。"
 }
     cards={w4WorkflowCards}
+      unassignedLabel={
+    locale === "en"
+      ? "Task cards to place"
+      : locale === "zh-Hant"
+      ? "待分配任務卡"
+      : "待分配任务卡"
+  }
+  emptyLabel={
+    locale === "en"
+      ? "Drag a card here, or select a card and click this column."
+      : locale === "zh-Hant"
+      ? "把卡片拖到這裏，或先點選卡片再點目標欄。"
+      : "把卡片拖到这里，或先点选卡片再点目标栏。"
+  }
+  allAssignedLabel={
+    locale === "en"
+      ? "All task cards have been placed."
+      : locale === "zh-Hant"
+      ? "所有任務卡都已放入欄目。"
+      : "所有任务卡都已放入栏目。"
+  }
+  selectedHintLabel={
+    locale === "en"
+      ? "One task card is selected. You can drag it, or click a target column."
+      : locale === "zh-Hant"
+      ? "已選中一張任務卡。你可以拖動它，或直接點擊目標欄。"
+      : "已选中一张任务卡。你可以拖拽它，或直接点击目标栏目。"
+  }
     columns={[
   {
     id: "ai_auto",
@@ -8124,6 +8773,20 @@ description={
             ? "把每個情況拖到最合適的位置。"
             : "把每个情况拖到最合适的位置。"
         }
+          allAssignedLabel={
+    locale === "en"
+      ? "All situations have been placed."
+      : locale === "zh-Hant"
+      ? "所有情況都已放入欄目。"
+      : "所有情况都已放入栏目。"
+  }
+  selectedHintLabel={
+    locale === "en"
+      ? "One situation is selected. You can drag it, or click a target column."
+      : locale === "zh-Hant"
+      ? "已選中一個情況。你可以拖動它，或直接點擊目標欄。"
+      : "已选中一个情况。你可以拖拽它，或直接点击目标栏目。"
+  }
         unassignedLabel={
           locale === "en"
             ? "Situations to sort"
